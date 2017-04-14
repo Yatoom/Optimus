@@ -78,32 +78,17 @@ class Search:
             result *= len(i)
         return result
 
-    def _convert_all_settings_to_values(self, params):
-        result = []
-        for setting in params:
-            result.append(self._convert_setting_to_values(setting))
-        return result
-
-    @staticmethod
-    def _convert_setting_to_values(setting):
-        # Convert strings to integers (takes the ascii value of each character)
-        settings_copy = copy(setting)
-        for key in settings_copy:
-            if type(settings_copy[key]) == str:
-                settings_copy[key] = int("".join([str(ord(c)) for c in "linear"]))
-        return list(settings_copy.values())
-
     def _maximize(self, sampled_params, current_best_score):
         # Fit parameters
         if len(self.validated_scores) > 0:
-            self.gp.fit(Converter.convert_settings(self.validated_params), self.validated_scores)
+            self.gp.fit(Converter.convert_settings(self.validated_params, self.param_distributions), self.validated_scores)
         else:
-            return [i for i in sampled_params][0], 0
+            return np.random.choice([i for i in sampled_params]), 0
 
         best_score = 0
         best_setting = None
         for setting in sampled_params:
-            score = self._get_ei(self._convert_setting_to_values(setting), current_best_score)
+            score = self._get_ei(Converter.convert_setting(setting, self.param_distributions), current_best_score)
             if score > best_score:
                 best_score = score
                 best_setting = setting
@@ -112,7 +97,10 @@ class Search:
 
     def _get_ei(self, point, current_best_score):
         point = np.array(point).reshape(1, -1)
-        mu, sigma = self.gp.predict(point, return_std=True)
+        try:
+            mu, sigma = self.gp.predict(point, return_std=True)
+        except ValueError:
+            print(point)
         best_score = current_best_score
         mu = mu[0]
         sigma = sigma[0]

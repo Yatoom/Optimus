@@ -4,7 +4,7 @@ import numpy as np
 
 class Converter:
     @staticmethod
-    def convert_settings(settings):
+    def convert_settings(settings, param_distributions):
         """
         Iteratively calls `convert_settings()` to convert all dictionaries to numerical lists of parameter values.
         :param settings: A list of dictionaries with parameter names as keys and parameter values as its values
@@ -12,11 +12,11 @@ class Converter:
         """
         result = []
         for setting in settings:
-            result.append(Converter.convert_setting(setting))
+            result.append(Converter.convert_setting(setting, param_distributions))
         return result
 
     @staticmethod
-    def convert_setting(setting):
+    def convert_setting(setting, param_distributions):
         """
         Takes the values of a parameter dictionary and converts them to numbers if necessary.
         :param setting: A dictionary with parameter names as keys and parameter values as its values
@@ -25,8 +25,16 @@ class Converter:
         settings_copy = copy(setting)
 
         for key in settings_copy:
-            if type(settings_copy[key]) == str:
-                settings_copy[key] = int("".join([str(ord(c)) for c in "linear"]))
+            value = settings_copy[key]
+
+            # Find the position of the value in the list
+            if not isinstance(value, (float, int)):
+                settings_copy[key] = param_distributions[key].index(value)
+            # if key not in [float, int, np.float64, np.float32, np.float16]:
+            #     try:
+            #         settings_copy[key] = np.where(np.array(param_distributions[key]) == settings_copy[key])[0].tolist()[0]
+            #     except IndexError:
+            #         print(key, param_distributions[key], settings_copy[key])
 
         return list(settings_copy.values())
 
@@ -44,7 +52,7 @@ class Converter:
     def make_readable(value):
         type_ = type(value)
 
-        if type_ in [int, float, str, bool, np.float64]:
+        if type_ in [int, float, str, bool, np.float64, None]:
             return value
 
         elif type_ is list or type_ is tuple:

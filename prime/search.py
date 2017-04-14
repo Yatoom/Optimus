@@ -17,7 +17,7 @@ class Optimizer:
 
     def prepare(self, X, y, n_rounds=1):
         for index, optimus in enumerate(self.optimi):
-            self._say("Preparing %s Optimizer with %s rounds" % (self.names[index], n_rounds))
+            self._say("\nPreparing %s Optimizer with %s rounds" % (self.names[index], n_rounds))
             for iteration in range(0, n_rounds):
                 self._say("---\nIteration %s/%s" % (iteration + 1, n_rounds))
                 parameters, score = optimus.sample_and_maximize(self.global_best_score)

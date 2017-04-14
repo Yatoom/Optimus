@@ -30,23 +30,23 @@ def get_models(categorical):
                 '@preprocessor': [DI, [DI, OHE]]
             }
         },
-        {
-            "name": "SVM Kernels",
-            "estimator": SVC(probability=True),
-            "params": {
-                "C": np.logspace(-10, 10, num=21, base=2),
-                "gamma": np.logspace(-10, 0, num=11, base=2),
-                "kernel": ["linear", "poly", "rbf"],
-                "@preprocessor": [DI, [DI, OHE], [DI, OHE, SS]]
-            }
-        },
+        # {
+        #     "name": "SVM Kernels",
+        #     "estimator": SVC(probability=True),
+        #     "params": {
+        #         "C": np.logspace(-10, 10, num=21, base=2),
+        #         "gamma": np.logspace(-10, 0, num=11, base=2),
+        #         "kernel": ["linear", "poly", "rbf"],
+        #         "@preprocessor": [DI, [DI, SS]]
+        #     }
+        # },
         {
             "name": "Gradient Boosting",
             "estimator": GradientBoostingClassifier(random_state=3, n_estimators=512),
             "params": {
                 "max_depth": [1, 2, 3],
                 "learning_rate": np.logspace(-5, 0, num=15, base=10),
-                "@preprocessor": [DI, [DI, OHE], [DI, OHE, SS, PC]]
+                "@preprocessor": [DI]
             }
         }
     ]
