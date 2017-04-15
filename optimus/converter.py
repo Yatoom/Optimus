@@ -27,14 +27,10 @@ class Converter:
         for key in settings_copy:
             value = settings_copy[key]
 
-            # Find the position of the value in the list
             if not isinstance(value, (float, int)):
+
+                # Find the position of the value in the list
                 settings_copy[key] = param_distributions[key].index(value)
-            # if key not in [float, int, np.float64, np.float32, np.float16]:
-            #     try:
-            #         settings_copy[key] = np.where(np.array(param_distributions[key]) == settings_copy[key])[0].tolist()[0]
-            #     except IndexError:
-            #         print(key, param_distributions[key], settings_copy[key])
 
         return list(settings_copy.values())
 
@@ -63,3 +59,11 @@ class Converter:
 
         else:
             return type(value).__name__
+
+    @staticmethod
+    def drop_zero_scores(parameters, scores):
+        params = copy(parameters)
+        mask = (np.array(scores) != 0).tolist()
+        params = np.array(params)[mask].tolist()
+        scores = np.array(scores)[mask].tolist()
+        return params, scores

@@ -15,13 +15,29 @@ class Optimizer:
                                       scoring=scoring, cv=cv, n_jobs=-1, verbose=True))
             self.names.append(model["name"])
 
-    def prepare(self, X, y, n_rounds=1):
+    def prepare(self, X, y, n_rounds=1, max_eval_time=150, max_retries=3):
         for index, optimus in enumerate(self.optimi):
+
             self._say("\nPreparing %s Optimizer with %s rounds" % (self.names[index], n_rounds))
+
             for iteration in range(0, n_rounds):
+
                 self._say("---\nIteration %s/%s" % (iteration + 1, n_rounds))
-                parameters, score = optimus.sample_and_maximize(self.global_best_score)
-                optimus.evaluate(parameters, X, y)
+
+                # Retry a few times to find a parameter that can be evaluated within max_eval_time.
+                success = False
+                for i in range(0, max_retries):
+                    parameters, score = optimus.sample_and_maximize(self.global_best_score)
+                    success = optimus.evaluate(parameters, X, y, max_eval_time)
+
+                    if success:
+                        break
+
+                # Drop if we never got success
+                if not success:
+                    self.optimi.pop(index)
+
+            # Update global best score
             self.global_best_score = max(self.global_best_score, optimus.current_best_score)
 
     def get_model_with_highest_ei(self):
@@ -29,7 +45,7 @@ class Optimizer:
         best_optimus = None
         best_score = 0
         for optimus in self.optimi:
-            parameters, score = optimus.sample_and_maximize(self.global_best_score)
+            parameters, score = optimus.sample_and_maximize(self.global_best_score, realistic=True)
 
             if score > best_score:
                 best_parameters = parameters
@@ -48,12 +64,19 @@ class Optimizer:
                 best_optimus = optimus
         return best_optimus.get_best()
 
-    def optimize(self, X, y, n_rounds):
+    def optimize(self, X, y, n_rounds, max_eval_time=150):
         for i in range(0, n_rounds):
             optimus, params = self.get_model_with_highest_ei()
+
+            #
             if optimus is None:
                 raise Exception("You need to call prepare() first.")
-            optimus.evaluate(params, X, y)
+
+            index = self.optimi.index(optimus)
+            self._say("---\nRound %s of %s. Running %s Optimizer" % (i+1, n_rounds, self.names[index]))
+
+            optimus.evaluate(params, X, y, max_eval_time)
+
         return self.get_best_model()
 
     def _say(self, *args):
