@@ -8,7 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from extra.dual_imputer import DualImputer
 
 
-def get_models(categorical):
+def get_models(categorical, features):
     # Pre-processing
     DI = DualImputer(categorical=categorical)
     OHE = OneHotEncoder(categorical_features=categorical, handle_unknown="ignore", sparse=False)
@@ -16,6 +16,14 @@ def get_models(categorical):
     RS = RobustScaler()
     PC = PCA()
     PF = PolynomialFeatures()
+
+    # Are there missing values?
+    any_missing = np.isnan(features).any()
+
+    # Are there any categorical features?
+    any_categorical = np.any(categorical)
+
+    print("Dataset has missing values: %s. Dataset has categorical values: %s" % (any_missing, any_categorical))
 
     models = [
         {
@@ -28,7 +36,11 @@ def get_models(categorical):
                 'min_samples_split': range(2, 21),
                 'min_samples_leaf': range(1, 21),
                 'bootstrap': [True, False],
-                '@preprocessor': [DI, [DI, OHE]]
+                '@preprocessor': make_conditional_steps([
+                    (DI, any_missing, None),
+                    (OHE, not any_missing and any_categorical),
+                    ([DI, OHE], any_missing and any_categorical)
+                ])
             }
         },
         {
@@ -38,7 +50,10 @@ def get_models(categorical):
                 "C": np.logspace(-10, 10, num=21, base=2),
                 "gamma": np.logspace(-10, 0, num=11, base=2),
                 "kernel": ["linear", "poly", "rbf"],
-                "@preprocessor": [DI, [DI, SS]]
+                "@preprocessor": make_conditional_steps([
+                    (DI, any_missing, None),
+                    ([DI, SS], any_missing, SS)
+                ])
             }
         },
         {
@@ -46,8 +61,10 @@ def get_models(categorical):
             "estimator": GradientBoostingClassifier(random_state=3, n_estimators=512),
             "params": {
                 "max_depth": [1, 2, 3],
-                "learning_rate": np.logspace(-5, 0, num=15, base=10),
-                "@preprocessor": [DI]
+                "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
+                "@preprocessor": make_conditional_steps([
+                    (DI, any_missing, None)
+                ])
             }
         },
         {
@@ -57,7 +74,10 @@ def get_models(categorical):
                 'n_neighbors': [1, 3, 5, 7, 9],
                 'weights': ["uniform", "distance"],
                 'p': [1, 2],
-                "@preprocessor": [DI, [DI, SS]]
+                "@preprocessor": make_conditional_steps([
+                    (DI, any_missing, None),
+                    ([DI, SS], any_missing, SS)
+                ])
             }
         },
         {
@@ -66,9 +86,37 @@ def get_models(categorical):
             "params": {
                 'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
                 'dual': [True, False],
-                "@preprocessor": [DI, [DI, SS]]
+                "@preprocessor": make_conditional_steps([
+                    (DI, any_missing, None),
+                    ([DI, SS], any_missing, SS)
+                ])
             }
         },
     ]
 
     return models
+
+
+def make_conditional_steps(conditional_steps):
+    """
+    Adds preprocessors to a list if a condition is fulfilled 
+    :param conditional_steps: (Preprocessor steps, condition, [alternative]) 
+    :return: the list of preprocessors that fulfill their conditions
+    """
+    result = []
+    for conditional_step in conditional_steps:
+
+        if len(conditional_step) == 3:
+            step, condition, alternative = conditional_step
+
+            if condition:
+                result.append(step)
+            else:
+                result.append(alternative)
+
+        else:
+            step, condition = conditional_step
+            if condition:
+                result.append(step)
+
+    return result
