@@ -7,7 +7,7 @@ import numpy as np
 
 
 class SampledMaximizer:
-    def __init__(self, gp, param_distribution, population_size):
+    def __init__(self, gp, param_distribution, population_size=100):
         self.gp = gp  # type: GaussianProcessRegressor
         self.population_size = min(population_size, self.get_grid_size(param_distribution))
         self.param_distribution = param_distribution
