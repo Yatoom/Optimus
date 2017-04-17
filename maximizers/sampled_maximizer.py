@@ -21,12 +21,14 @@ class SampledMaximizer:
         return self.maximize_on_sample(sampled_params, validated_params, validated_scores, current_best_score)
 
     def maximize_on_sample(self, sampled_params, validated_params, validated_scores, current_best_score):
-        # Fit parameters
-        if len(validated_scores) > 0:
-            self.gp.fit(Converter.convert_settings(validated_params, self.param_distribution),
-                        validated_scores)
-        else:
+
+        if len(validated_scores) == 0:
             return np.random.choice([i for i in sampled_params]), 0
+
+        # Fit parameters
+        self.gp.fit(Converter.convert_settings(validated_params, self.param_distribution),
+                        validated_scores)
+
 
         best_score = - np.inf
         best_setting = None
@@ -36,16 +38,18 @@ class SampledMaximizer:
                 best_score = score
                 best_setting = setting
 
-        return best_setting, self.realize(best_setting, validated_params, validated_scores, current_best_score)
+        return best_setting, self.realize(best_setting, validated_params, validated_scores, current_best_score, best_score)
 
-    def realize(self, best_setting, validated_params, validated_scores, current_best_score):
+    def realize(self, best_setting, validated_params, validated_scores, current_best_score, original):
         params, scores = Converter.drop_zero_scores(validated_params, validated_scores)
-        if len(scores) > 0:
-            self.gp.fit(Converter.convert_settings(params, self.param_distribution), scores)
-            realistic_score = self.get_ei(Converter.convert_setting(best_setting, self.param_distribution),
-                                          current_best_score)
-        else:
-            return 0
+
+        if len(scores) == 0:
+            return original
+
+        self.gp.fit(Converter.convert_settings(params, self.param_distribution), scores)
+        realistic_score = self.get_ei(Converter.convert_setting(best_setting, self.param_distribution),
+                                      current_best_score)
+
         return realistic_score
 
     def get_ei(self, point, current_best_score):

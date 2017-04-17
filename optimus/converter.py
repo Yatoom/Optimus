@@ -40,7 +40,7 @@ class Converter:
         printable = ""
 
         for key in params:
-            printable += key + " = " + str(Converter.make_readable(params[key])) + ", "
+            printable += str(key) + " = " + str(Converter.make_readable(params[key])) + ", "
 
         return printable[:-2]
 

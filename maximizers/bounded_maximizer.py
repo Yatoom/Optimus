@@ -8,20 +8,25 @@ from vault.transformers import ParamDistribution
 
 
 class BoundedMaximizer:
-    def __init__(self, gp, param_distribution):
+    def __init__(self, gp, param_distribution, n_restarts=10):
         self.gp = gp  # type: GaussianProcessRegressor
-        self.param_distribution = param_distribution  # type: ParamDistribution
+        self.param_distribution = ParamDistribution(param_distribution)
         self.bounds = self.param_distribution.get_bounds()
+        self.n_restarts = n_restarts
 
-    def maximize(self, n_restarts, validated_params, validated_scores, current_best_score):
-        validated_losses = - validated_scores
+    def maximize(self, validated_params, validated_scores, current_best_score):
+        if len(validated_scores) == 0:
+            random_x = self.param_distribution.get_random()
+            params = self.param_distribution.transform_to_params(random_x)
+            return params, 0
+
+        validated_losses = (- np.array(validated_scores)).tolist()
         best_value = np.inf
         best_x = None
-        # validated_vectors = self.param_distribution.transform(validated_params)
 
         self.gp.fit(self.param_distribution.transform_to_values(validated_params), validated_losses)
 
-        for _ in range(0, n_restarts):
+        for _ in range(0, self.n_restarts):
             point = self.param_distribution.get_random()
             res = minimize(
                 fun=self.get_ei,
@@ -35,10 +40,17 @@ class BoundedMaximizer:
                 best_value = res.fun
                 best_x = res.x
 
-        return best_x, -self.realize(validated_params, validated_losses, best_x)
+        best_params = self.param_distribution.transform_to_params(best_x)
+        best_value = - self.realize(validated_params, validated_losses, best_x, best_value)
 
-    def realize(self, validated_params, validated_losses, point):
+        return best_params, best_value
+
+    def realize(self, validated_params, validated_losses, point, original):
         params, scores = Converter.drop_zero_scores(validated_params, validated_losses)
+
+        if len(scores) == 0:
+            return original
+
         values = self.param_distribution.transform_to_values(params)
         self.gp.fit(values, scores)
         return self.gp.predict(self.param_distribution.realistic(point))

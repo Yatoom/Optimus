@@ -6,6 +6,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler, RobustScaler, P
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from extra.dual_imputer import DualImputer
+from vault.transformers import Choice, Discrete, LogScale
 
 
 def get_models(categorical, features):
@@ -30,66 +31,66 @@ def get_models(categorical, features):
             "name": "Random Forest",
             "estimator": RandomForestClassifier(n_jobs=-1, n_estimators=300, random_state=3),
             "params": {
-                'criterion': ["gini", "entropy"],
-                'max_features': np.arange(0.05, 0.5, 0.05),
-                'max_depth': [3, 5, 7, 9, None],
-                'min_samples_split': range(2, 21),
-                'min_samples_leaf': range(1, 21),
-                'bootstrap': [True, False],
-                '@preprocessor': make_conditional_steps([
+                "criterion": Choice(["gini", "entropy"]),
+                "max_depth": Choice([3, 5, 7, 9, None]),
+                "max_features": Choice(np.arange(0.05, 0.5, 0.05)),
+                "min_samples_leaf": Discrete((1, 21)),
+                "min_samples_split": Discrete((2, 21)),
+                'bootstrap': Choice([True, False]),
+                '@preprocessor': Choice(make_conditional_steps([
                     (DI, any_missing, None),
                     (OHE, not any_missing and any_categorical),
                     ([DI, OHE], any_missing and any_categorical)
-                ])
+                ]))
             }
         },
         {
             "name": "SVM Kernels",
             "estimator": SVC(probability=True),
             "params": {
-                "C": np.logspace(-10, 10, num=21, base=2),
-                "gamma": np.logspace(-10, 0, num=11, base=2),
-                "kernel": ["linear", "poly", "rbf"],
-                "@preprocessor": make_conditional_steps([
+                "C": LogScale(2, (-10, 10)),
+                "gamma": LogScale(2, (-10, 0)),
+                "kernel": Choice(["linear", "poly", "rbf"]),
+                "@preprocessor": Choice(make_conditional_steps([
                     (DI, any_missing, None),
                     ([DI, SS], any_missing, SS)
-                ])
+                ]))
             }
         },
         {
             "name": "Gradient Boosting",
             "estimator": GradientBoostingClassifier(random_state=3, n_estimators=512),
             "params": {
-                "max_depth": [1, 2, 3],
-                "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
-                "@preprocessor": make_conditional_steps([
+                "max_depth": Choice([1, 2, 3]),
+                "learning_rate": LogScale(10, (-5, 0)),
+                "@preprocessor": Choice(make_conditional_steps([
                     (DI, any_missing, None)
-                ])
+                ]))
             }
         },
         {
             "name": "K-Neighbors",
             "estimator": KNeighborsClassifier(n_jobs=-1),
             "params": {
-                'n_neighbors': [1, 3, 5, 7, 9],
-                'weights': ["uniform", "distance"],
-                'p': [1, 2],
-                "@preprocessor": make_conditional_steps([
+                'n_neighbors': Choice([1, 3, 5, 7, 9]),
+                'weights': Choice(["uniform", "distance"]),
+                'p': Choice([1, 2]),
+                "@preprocessor": Choice(make_conditional_steps([
                     (DI, any_missing, None),
                     ([DI, SS], any_missing, SS)
-                ])
+                ]))
             }
         },
         {
             "name": "LogisticRegression",
             "estimator": LogisticRegression(n_jobs=-1, penalty="l2", random_state=3),
             "params": {
-                'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
-                'dual': [True, False],
-                "@preprocessor": make_conditional_steps([
+                'C': Choice([1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.]),
+                'dual': Choice([True, False]),
+                "@preprocessor": Choice(make_conditional_steps([
                     (DI, any_missing, None),
                     ([DI, SS], any_missing, SS)
-                ])
+                ]))
             }
         },
     ]

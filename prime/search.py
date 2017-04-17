@@ -27,7 +27,7 @@ class Optimizer:
                 # Retry a few times to find a parameter that can be evaluated within max_eval_time.
                 success = False
                 for i in range(0, max_retries):
-                    parameters, score = optimus.sample_and_maximize(self.global_best_score)
+                    parameters, score = optimus.maximize(self.global_best_score)
                     success = optimus.evaluate(parameters, X, y, max_eval_time)
 
                     if success:
@@ -45,7 +45,7 @@ class Optimizer:
         best_optimus = None
         best_score = 0
         for optimus in self.optimi:
-            parameters, score = optimus.sample_and_maximize(self.global_best_score, realistic=True)
+            parameters, score = optimus.maximize(self.global_best_score)
 
             if score > best_score:
                 best_parameters = parameters
@@ -75,7 +75,7 @@ class Optimizer:
             index = self.optimi.index(optimus)
             self._say("---\nRound %s of %s. Running %s Optimizer" % (i+1, n_rounds, self.names[index]))
 
-            optimus.evaluate(params, X, y, max_eval_time)
+            optimus.evaluate(params, X, y, max_eval_time=max_eval_time, current_best_score=self.global_best_score)
 
         return self.get_best_model()
 

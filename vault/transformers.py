@@ -8,13 +8,13 @@ class ParamDistribution:
 
     def get_bounds(self):
         result = []
-        for key, transformer in self.params:
+        for key, transformer in self.params.items():
             result.append(transformer.get_bounds())
         return result
 
     def get_random(self):
         result = []
-        for key, transformer in self.params:
+        for key, transformer in self.params.items():
             result.append(transformer.get_random())
         return result
 
@@ -22,7 +22,7 @@ class ParamDistribution:
         result = []
         for index, param in enumerate(self.params):
             transformer = self.params[param]  # type: Transformer
-            result[index] = transformer.get_used_part_of_value(vector[index])
+            result.append(transformer.get_used_part_of_value(vector[index]))
         return result
 
     def transform_to_params(self, vector):
@@ -33,10 +33,19 @@ class ParamDistribution:
         return result
 
     def transform_to_values(self, parameters):
+        if isinstance(parameters, list):
+            result = []
+            for setting in parameters:
+                result.append(self.transform_setting_to_value(setting))
+            return result
+
+        return self.transform_to_values(parameters)
+
+    def transform_setting_to_value(self, setting):
         result = []
-        for index, param in enumerate(parameters):
+        for index, param in enumerate(setting):
             transformer = self.params[param]  # type: Transformer
-            result[index] = transformer.transform_to_value(parameters[param])
+            result.append(transformer.transform_to_value(setting[param]))
         return result
 
 
@@ -98,7 +107,7 @@ class Choice(Transformer):
 
     def transform_to_value(self, param):
         # "bike" --> 1
-        return self.choices.index(param)
+        return (np.array(self.choices).tolist()).index(param)
 
     def get_random(self):
         # Given S, this should return one of [0, 1, 2]
