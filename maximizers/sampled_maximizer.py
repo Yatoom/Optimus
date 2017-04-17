@@ -1,4 +1,6 @@
+from numpy.linalg import LinAlgError
 from scipy.stats import norm
+from sklearn import clone
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.model_selection import ParameterSampler
 
@@ -8,7 +10,7 @@ import numpy as np
 
 class SampledMaximizer:
     def __init__(self, gp, param_distribution, population_size=100):
-        self.gp = gp  # type: GaussianProcessRegressor
+        self.gp_score = gp  # type: GaussianProcessRegressor
         self.population_size = min(population_size, self.get_grid_size(param_distribution))
         self.param_distribution = param_distribution
 
@@ -26,9 +28,11 @@ class SampledMaximizer:
             return np.random.choice([i for i in sampled_params]), 0
 
         # Fit parameters
-        self.gp.fit(Converter.convert_settings(validated_params, self.param_distribution),
-                        validated_scores)
-
+        converted_settings = Converter.convert_settings(validated_params, self.param_distribution)
+        try:
+            self.gp_score.fit(converted_settings, validated_scores)
+        except LinAlgError as e:
+            print(str(e))
 
         best_score = - np.inf
         best_setting = None
@@ -46,7 +50,8 @@ class SampledMaximizer:
         if len(scores) == 0:
             return original
 
-        self.gp.fit(Converter.convert_settings(params, self.param_distribution), scores)
+        converted_settings = Converter.convert_settings(params, self.param_distribution)
+        self.gp_score.fit(converted_settings, scores)
         realistic_score = self.get_ei(Converter.convert_setting(best_setting, self.param_distribution),
                                       current_best_score)
 
@@ -54,7 +59,7 @@ class SampledMaximizer:
 
     def get_ei(self, point, current_best_score):
         point = np.array(point).reshape(1, -1)
-        mu, sigma = self.gp.predict(point, return_std=True)
+        mu, sigma = self.gp_score.predict(point, return_std=True)
         best_score = current_best_score
         mu = mu[0]
         sigma = sigma[0]

@@ -1,3 +1,4 @@
+import time
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern, ConstantKernel
 from sklearn.model_selection import cross_val_score
@@ -15,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 class Search:
     def __init__(self, estimator, param_distributions, n_iter=10, population_size=100, scoring=None, cv=10,
-                 n_jobs=-1, verbose=True, maximizer=SampledMaximizer):
+                 n_jobs=-1, verbose=True, maximizer=SampledMaximizer, timeout_score=0):
         # Accept parameters
         self.estimator = estimator
         self.param_distributions = param_distributions
@@ -26,6 +27,7 @@ class Search:
         self.cv = cv
         self.verbose = verbose
         self.param_keys = param_distributions.keys()
+        self.timeout_score = timeout_score
 
         # Initialization of validated values, scores and the current best setting
         self.validated_params = []
@@ -89,19 +91,20 @@ class Search:
         with Timeout(max_eval_time):
             try:
                 score = cross_val_score(best_estimator, X, y, scoring=self.scoring, cv=self.cv, n_jobs=-1)
-            except TimeoutError:
+            except (GeneratorExit, TimeoutError):  # Note:
                 self._say("Timeout :(")
                 success = False
-                score = [0]
+                score = [self.timeout_score]
 
         # Get the mean and store the results
         score = np.mean(score)
-        if current_best_score is not None:
-            self._say("Score: %s | best = %s" % (score, current_best_score))
-        else:
-            self._say("Score: %s" % score)
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
         self.current_best_score = max(score, self.current_best_score)
+
+        if current_best_score is not None:
+            self._say("Score: %s | best = %s" % (score, max(current_best_score, score)))
+        else:
+            self._say("Score: %s" % score)
 
         return success

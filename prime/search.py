@@ -76,7 +76,7 @@ class Optimizer:
             self._say("---\nRound %s of %s. Running %s Optimizer" % (i+1, n_rounds, self.names[index]))
 
             optimus.evaluate(params, X, y, max_eval_time=max_eval_time, current_best_score=self.global_best_score)
-
+            self.global_best_score = max(self.global_best_score, optimus.current_best_score)
         return self.get_best_model()
 
     def _say(self, *args):
