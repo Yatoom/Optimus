@@ -9,6 +9,20 @@ from keras.layers import Dense, Dropout
 class NeuralNetwork(BaseEstimator, ClassifierMixin):
     def __init__(self, layer_size=100, n_layers=1, activation='relu', optimizer='adam', loss="sparse_categorical_crossentropy",
                  dropout=0.5, readout="softmax", metrics=None, batch_size=30, epochs=5, verbose=0):
+        """
+        Keras implementation of a simple neural network.
+        :param layer_size: Integer number of nodes per layer 
+        :param n_layers: Integer number of layers
+        :param activation: Keras activation function
+        :param optimizer: Keras optimizer
+        :param loss: kerass loss function
+        :param dropout: Droupout ratio
+        :param readout: Keras activation function for the readout layer
+        :param metrics: List of Keras metrics to evaluate each round
+        :param batch_size: Integer number for batch size
+        :param epochs: Integer number of epochs
+        :param verbose: Verbosity level
+        """
 
         if metrics is None:
             metrics = ["accuracy"]
@@ -29,8 +43,7 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
         self.classes_ = None
         self.model = None
 
-    def build(self, input_dim, output_dim):
-
+    def _build(self, input_dim, output_dim):
         model = Sequential()
 
         # First hidden layer
@@ -53,6 +66,13 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
         return model
 
     def fit(self, X, y):
+        """
+        Fit on X.
+        :param X: {array-like, sparse matrix}, shape (n_samples, n_features). Input data, where `n_samples` is the 
+        number of samples and `n_features` is the number of features.
+        :return: Returns self
+        """
+
         # Numpy
         X = np.array(X)
         y = np.array(y)
@@ -73,7 +93,7 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
 
         # Create a model if needed
         if (input_dim, output_dim) != self.io:
-            self.model = self.build(input_dim, output_dim)
+            self.model = self._build(input_dim, output_dim)
 
         self.model.fit(X, y, batch_size=self.batch_size, epochs=self.epochs, verbose=self.verbose)
 
@@ -81,6 +101,13 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
+        """
+        Predict class value for X.
+        :param X: {array-like, sparse matrix}, shape (n_samples, n_features). Input data, where `n_samples` is the 
+        number of samples and `n_features` is the number of features.
+        :return: Returns self. 
+        """
+
         # Numpy
         X = np.array(X)
 
@@ -93,6 +120,13 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
         return np.argmax(self.model.predict(X, verbose=self.verbose), axis=1)
 
     def predict_proba(self, X):
+        """
+        Predict class probabilities for X.
+        :param X: {array-like, sparse matrix}, shape (n_samples, n_features). Input data, where `n_samples` is the 
+        number of samples and `n_features` is the number of features.
+        :return: Returns self. 
+        """
+
         # Numpy
         X = np.array(X)
 
@@ -102,9 +136,15 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
         # Input validation
         X = check_array(X)
 
-        return self.model.predict(X, verbose=self.verbose)
+        return self.model.predict_proba(X, verbose=self.verbose)
 
     def get_params(self, deep=True):
+        """
+        Get parameters for this estimator.
+        :param deep: boolean, optional. If True, will return the parameters for this estimator and contained subobjects 
+        that are estimators.
+        :return: Parameter names mapped to their values.
+        """
         return {
             "layer_size": self.layer_size,
             "activation": self.activation,
@@ -119,6 +159,11 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
         }
 
     def set_params(self, **parameters):
+        """
+        Set the parameters of this estimator.
+        :param parameters: Parameter-value mapping of parameters to set
+        :return: Returns self
+        """
         for parameter, value in parameters.items():
             self.__setattr__(parameter, value)
         return self

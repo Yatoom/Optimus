@@ -8,6 +8,10 @@ class Timeout:
         pass
 
     def __init__(self, sec):
+        """
+        Triggers timeout if a code block takes too long to execute.
+        :param sec: Number of seconds before TimeoutError is triggered 
+        """
         self.sec = sec
 
     def __enter__(self):
