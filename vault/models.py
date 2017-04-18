@@ -9,6 +9,14 @@ from extra.dual_imputer import DualImputer
 
 
 def get_models(categorical, features):
+    """
+    Get a list of model configurations. Some configurations adapt to whether categorical data or missing values are 
+    present in the dataset.
+    :param categorical: Boolean mask for categorical values  
+    :param features: Dataset feature values per sample  
+    :return: A list of model configurations
+    """
+
     # Pre-processing
     DI = DualImputer(categorical=categorical)
     OHE = OneHotEncoder(categorical_features=categorical, handle_unknown="ignore", sparse=False)

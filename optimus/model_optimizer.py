@@ -11,7 +11,7 @@ from optimus.maximizer import Maximizer
 warnings.filterwarnings("ignore")
 
 
-class Search:
+class ModelOptimizer:
     def __init__(self, estimator, param_distributions, n_iter=10, population_size=100, scoring=None, cv=10,
                  verbose=True, timeout_score=0):
         """
@@ -110,13 +110,18 @@ class Search:
 
         # Try evaluating within a time limit
         start = time.time()
-        with Timeout(max_eval_time):
-            try:
+        try:
+            with Timeout(max_eval_time):
                 score = cross_val_score(best_estimator, X, y, scoring=self.scoring, cv=self.cv, n_jobs=-1)
-            except (GeneratorExit, TimeoutError):  # Note:
-                self._say("Timeout :(")
-                success = False
-                score = [self.timeout_score]
+        except TimeoutError:
+            self._say("Timeout error :(")
+            success = False
+            score = [self.timeout_score]
+        except Exception:
+            self._say("An error occurred with parameters", Converter.readable_parameters(parameters))
+            success = False
+            score = [self.timeout_score]
+
         end = time.time() - start if success else max_eval_time
 
         # Get the mean and store the results

@@ -1,10 +1,17 @@
-from optimus.search import Search
+from optimus.model_optimizer import ModelOptimizer
 import numpy as np
 
 
-class Optimizer:
+class MultiOptimizer:
 
     def __init__(self, models, scoring="accuracy", cv=10, verbose=True):
+        """
+        Optimizer for multiple models.
+        :param models: Dictionary with a 'name': string, an 'estimator': Sklearn Estimator and 'params': dictionary.
+        :param scoring: A Sklearn scorer: http://scikit-learn.org/stable/modules/model_evaluation.html
+        :param cv: A Sklearn Cross-Validation object or number
+        :param verbose: A boolean to control verbosity
+        """
         self.optimi = []
         self.names = []
         self.cv = cv
@@ -13,11 +20,20 @@ class Optimizer:
         self.verbose = verbose
 
         for model in models:
-            self.optimi.append(Search(model["estimator"], model["params"], n_iter=None, population_size=100,
-                                      scoring=scoring, cv=cv, verbose=True))
+            self.optimi.append(ModelOptimizer(model["estimator"], model["params"], n_iter=None, population_size=100,
+                                              scoring=scoring, cv=cv, verbose=True))
             self.names.append(model["name"])
 
     def prepare(self, X, y, n_rounds=1, max_eval_time=150, max_retries=3):
+        """
+        Prepare models by optimizing each model optimizer individually.
+        :param X: List of features
+        :param y: list of labels
+        :param n_rounds: Number of rounds to initiate each model 
+        :param max_eval_time: Maximum wall clock time in seconds for evaluating a single parameter setting
+        :param max_retries: Maximum number of retries to find a parameter setting that does not result in an error. If
+        the maximum number is exceeded, the model will be dropped. 
+        """
         for index, optimus in enumerate(self.optimi):
 
             self._say("\nPreparing %s Optimizer with %s rounds" % (self.names[index], n_rounds))
@@ -45,6 +61,11 @@ class Optimizer:
             print("Best time:", self.global_best_time)
 
     def get_model_with_highest_ei(self):
+        """
+        Ask each individual model optimizer to calculate its expected improvement and get the model with the best EI and
+        the corresponding parameters. 
+        :return: (best model optimizer, best parameters)
+        """
         best_parameters = None
         best_optimus = None
         best_score = 0
@@ -59,6 +80,10 @@ class Optimizer:
         return best_optimus, best_parameters
 
     def get_best_model(self):
+        """
+        Gets the best model we have found so far. 
+        :return: Returns the best model
+        """
         best_optimus = None
         best_score = 0
         for optimus in self.optimi:
@@ -69,6 +94,14 @@ class Optimizer:
         return best_optimus.get_best()
 
     def optimize(self, X, y, n_rounds, max_eval_time=150):
+        """
+        Finds the model and setting with the highest EI, and evaluates this model, for each round.
+        :param X: List of features
+        :param y: List of labels
+        :param n_rounds: Number of rounds
+        :param max_eval_time: Maximum wall clock time in seconds for evaluating a single parameter setting
+        :return: Returns the best model
+        """
         for i in range(0, n_rounds):
             optimus, params = self.get_model_with_highest_ei()
 
@@ -84,5 +117,9 @@ class Optimizer:
         return self.get_best_model()
 
     def _say(self, *args):
+        """
+        Calls print() if verbose=True.
+        :param args: Arguments to pass to print()
+        """
         if self.verbose:
             print(*args)
