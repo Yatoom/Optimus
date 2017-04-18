@@ -46,7 +46,7 @@ class BoundedMaximizer:
         return best_params, best_value
 
     def realize(self, validated_params, validated_losses, point, original):
-        params, scores = Converter.drop_zero_scores(validated_params, validated_losses)
+        params, scores = Converter.remove_timeouts(validated_params, validated_losses)
 
         if len(scores) == 0:
             return original

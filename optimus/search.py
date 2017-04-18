@@ -1,29 +1,39 @@
 import time
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Matern, ConstantKernel
 from sklearn.model_selection import cross_val_score
 import numpy as np
 import warnings
 
 from extra.timeout import Timeout
-from maximizers.bounded_maximizer import BoundedMaximizer
-from maximizers.sampled_maximizer import SampledMaximizer
 from optimus.builder import Builder
 from optimus.converter import Converter
+from optimus.maximizer import Maximizer
 
 warnings.filterwarnings("ignore")
 
 
 class Search:
     def __init__(self, estimator, param_distributions, n_iter=10, population_size=100, scoring=None, cv=10,
-                 n_jobs=-1, verbose=True, maximizer=SampledMaximizer, timeout_score=0):
+                 verbose=True, timeout_score=0):
+        """
+        An optimizer using Gaussian Processes for optimizing a single model. 
+        :param estimator: The estimator to optimize
+        :param param_distributions: A dictionary of parameter distributions for the estimator. An extra key 
+        `@preprocessor` can be added to try out different preprocessors.
+        :param n_iter: The number of iterations of finding and evaluating settings
+        :param population_size: The number of samples to randomly draw from the hyper parameter, to use for finding the
+        next best point.
+        :param scoring: A Sklearn-compatible scoring method
+        :param cv: A sklearn-compatible cross-validation object
+        :param verbose: The verbosity level (boolean)
+        :param timeout_score: The score value to insert in case of timeout 
+        """
+
         # Accept parameters
         self.estimator = estimator
         self.param_distributions = param_distributions
         self.n_iter = n_iter
         self.population_size = population_size
         self.scoring = scoring
-        self.n_jobs = n_jobs
         self.cv = cv
         self.verbose = verbose
         self.param_keys = param_distributions.keys()
@@ -37,25 +47,14 @@ class Search:
         self.current_best_score = -np.inf
         self.current_best_time = np.inf
 
-        cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
-        other_kernel = Matern(
-            length_scale=np.ones(len(self.param_distributions)),
-            length_scale_bounds=[(0.01, 100)] * len(self.param_distributions),
-            nu=2.5)
-
-        self.gp = GaussianProcessRegressor(
-            kernel=cov_amplitude * other_kernel,
-            normalize_y=True, random_state=3, alpha=0.0,
-            n_restarts_optimizer=2)
-
         # Setup maximizer
-        self.Maximizer = maximizer(self.gp, self.param_distributions)
-
-    def _say(self, *args):
-        if self.verbose:
-            print(*args)
+        self.Maximizer = Maximizer(self.param_distributions)
 
     def get_best(self):
+        """
+        Builds an estimator with the current best parameters.
+        :return: A pipeline or a single estimator, set up with the current best parameters.
+        """
         best = np.argmax(self.validated_scores)
         best_setting = self.validated_params[best]
 
@@ -65,7 +64,13 @@ class Search:
         # Return the estimator with the best parameters
         return Builder.build_pipeline(self.estimator, best_setting)
 
-    def fit(self, X, y=None, groups=None):
+    def fit(self, X, y=None):
+        """
+        Fit method for stand-alone use of the Optimus single-model optimizer.
+        :param X: Sets of features
+        :param y: Set of labels
+        :return: A pipeline or a single estimator, set up with the best parameters
+        """
         self._say("Bayesian search with %s iterations..." % self.n_iter)
         for i in range(0, self.n_iter):
             self._say("---\nIteration %s/%s" % (i + 1, self.n_iter))
@@ -75,11 +80,25 @@ class Search:
         return self.get_best()
 
     def maximize(self, current_best_score, current_best_time):
-        self.Maximizer.tell(self.validated_params, self.validated_scores, self.validated_times, current_best_score, current_best_time)
+        """
+        Finds the next best point to evaluate.
+        :param current_best_score: The current score optimum
+        :param current_best_time: The current time optimum
+        :return: Parameters of the next point to evaluate
+        """
+        self.Maximizer.update(self.validated_params, self.validated_scores, self.validated_times, current_best_score, current_best_time)
         return self.Maximizer.maximize()
 
     def evaluate(self, parameters, X, y, max_eval_time=None, current_best_score=None):
-
+        """
+        Evaluates a parameter setting and updates the list of validated parameters afterward.
+        :param parameters: The parameter setting to evaluate
+        :param X: The sets of features to use for evaluation
+        :param y: The set of labels to use for evaluation
+        :param max_eval_time: Maximum time to evaluate the parameter setting
+        :param current_best_score: The current best score, only used for printing
+        :return: A boolean specifying whether or not the evaluation was successful (i.e. finished in time) 
+        """
         self._say(
             "Evaluating parameters: %s with timeout %s" % (Converter.readable_parameters(parameters), max_eval_time))
 
@@ -114,3 +133,11 @@ class Search:
             self._say("Score: %s" % score)
 
         return success
+
+    def _say(self, *args):
+        """
+        Calls print() if verbose=True.
+        :param args: Arguments to pass to print()
+        """
+        if self.verbose:
+            print(*args)

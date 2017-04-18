@@ -14,7 +14,7 @@ class Optimizer:
 
         for model in models:
             self.optimi.append(Search(model["estimator"], model["params"], n_iter=None, population_size=100,
-                                      scoring=scoring, cv=cv, n_jobs=-1, verbose=True))
+                                      scoring=scoring, cv=cv, verbose=True))
             self.names.append(model["name"])
 
     def prepare(self, X, y, n_rounds=1, max_eval_time=150, max_retries=3):
