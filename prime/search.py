@@ -1,4 +1,5 @@
 from optimus.search import Search
+import numpy as np
 
 
 class Optimizer:
@@ -7,7 +8,8 @@ class Optimizer:
         self.optimi = []
         self.names = []
         self.cv = cv
-        self.global_best_score = 0
+        self.global_best_score = -np.inf
+        self.global_best_time = np.inf
         self.verbose = verbose
 
         for model in models:
@@ -27,7 +29,7 @@ class Optimizer:
                 # Retry a few times to find a parameter that can be evaluated within max_eval_time.
                 success = False
                 for i in range(0, max_retries):
-                    parameters, score = optimus.maximize(self.global_best_score)
+                    parameters, score = optimus.maximize(self.global_best_score, self.global_best_time)
                     success = optimus.evaluate(parameters, X, y, max_eval_time)
 
                     if success:
@@ -37,15 +39,17 @@ class Optimizer:
                 if not success:
                     self.optimi.pop(index)
 
-            # Update global best score
-            self.global_best_score = max(self.global_best_score, optimus.current_best_score)
+                # Update global best score
+                self.global_best_time = min(self.global_best_time, optimus.current_best_time)
+                self.global_best_score = max(self.global_best_score, optimus.current_best_score)
+            print("Best time:", self.global_best_time)
 
     def get_model_with_highest_ei(self):
         best_parameters = None
         best_optimus = None
         best_score = 0
         for optimus in self.optimi:
-            parameters, score = optimus.maximize(self.global_best_score)
+            parameters, score = optimus.maximize(self.global_best_score, self.global_best_time)
 
             if score > best_score:
                 best_parameters = parameters

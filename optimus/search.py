@@ -32,8 +32,10 @@ class Search:
         # Initialization of validated values, scores and the current best setting
         self.validated_params = []
         self.validated_scores = []
+        self.validated_times = []
         self.current_best_setting = None
-        self.current_best_score = 0
+        self.current_best_score = -np.inf
+        self.current_best_time = np.inf
 
         cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
         other_kernel = Matern(
@@ -67,14 +69,14 @@ class Search:
         self._say("Bayesian search with %s iterations..." % self.n_iter)
         for i in range(0, self.n_iter):
             self._say("---\nIteration %s/%s" % (i + 1, self.n_iter))
-            best_params, best_score = self.Maximizer.maximize(
-                self.validated_params, self.validated_scores, self.current_best_score)
+            best_params, best_score = self.maximize(current_best_score=self.current_best_score, current_best_time=self.current_best_time)
             self.evaluate(best_params, X, y, current_best_score=self.current_best_score)
 
         return self.get_best()
 
-    def maximize(self, current_best_score):
-        return self.Maximizer.maximize(self.validated_params, self.validated_scores, current_best_score)
+    def maximize(self, current_best_score, current_best_time):
+        self.Maximizer.tell(self.validated_params, self.validated_scores, self.validated_times, current_best_score, current_best_time)
+        return self.Maximizer.maximize()
 
     def evaluate(self, parameters, X, y, max_eval_time=None, current_best_score=None):
 
@@ -88,6 +90,7 @@ class Search:
         best_estimator = Builder.build_pipeline(self.estimator, parameters)
 
         # Try evaluating within a time limit
+        start = time.time()
         with Timeout(max_eval_time):
             try:
                 score = cross_val_score(best_estimator, X, y, scoring=self.scoring, cv=self.cv, n_jobs=-1)
@@ -95,11 +98,14 @@ class Search:
                 self._say("Timeout :(")
                 success = False
                 score = [self.timeout_score]
+        end = time.time() - start if success else max_eval_time
 
         # Get the mean and store the results
         score = np.mean(score)
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
+        self.validated_times.append(end)
+        self.current_best_time = min(end, self.current_best_time)
         self.current_best_score = max(score, self.current_best_score)
 
         if current_best_score is not None:
