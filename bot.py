@@ -33,7 +33,7 @@ for t in [15, 21, 29, 37, 59, 23]:
 
     prime = MultiOptimizer(model_data, "accuracy", cv=openml_splits)
     prime.prepare(X, y, 3, max_eval_time=150)
-    best_model = prime.optimize(X, y, 50)
+    best_model = prime.optimize(X, y, 50, max_eval_time=150)
     print("Running OpenML task")
     run = openml.runs.run_task(task, best_model)
     run.publish()

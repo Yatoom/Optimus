@@ -54,6 +54,8 @@ class MultiOptimizer:
                 # Drop if we never got success
                 if not success:
                     self.optimi.pop(index)
+                    self.names.pop(index)
+                    break
 
                 # Update global best score
                 self.global_best_time = min(self.global_best_time, optimus.current_best_time)
@@ -68,7 +70,7 @@ class MultiOptimizer:
         """
         best_parameters = None
         best_optimus = None
-        best_score = 0
+        best_score = -np.inf
         for optimus in self.optimi:
             parameters, score = optimus.maximize(self.global_best_score, self.global_best_time)
 
