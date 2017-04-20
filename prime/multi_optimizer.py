@@ -1,5 +1,6 @@
 from optimus.model_optimizer import ModelOptimizer
 import numpy as np
+from copy import copy
 
 
 class MultiOptimizer:
@@ -34,7 +35,14 @@ class MultiOptimizer:
         :param max_retries: Maximum number of retries to find a parameter setting that does not result in an error. If
         the maximum number is exceeded, the model will be dropped. 
         """
-        for index, optimus in enumerate(self.optimi):
+
+        self._say("\nPreparing all models for %s rounds.\n----------------------------------" % n_rounds)
+
+        # In case we want to drop model optimizers from the list, we still need the un-modified original list, so that
+        # we do not cause problems in the for-loop.
+        optimi = copy(self.optimi)
+
+        for index, optimus in enumerate(optimi):
 
             self._say("\nPreparing %s Optimizer with %s rounds" % (self.names[index], n_rounds))
 
@@ -79,7 +87,7 @@ class MultiOptimizer:
                 best_optimus = optimus
                 best_score = score
 
-        return best_optimus, best_parameters
+        return best_optimus, best_parameters, best_score
 
     def get_best_model(self):
         """
@@ -104,15 +112,16 @@ class MultiOptimizer:
         :param max_eval_time: Maximum wall clock time in seconds for evaluating a single parameter setting
         :return: Returns the best model
         """
-        for i in range(0, n_rounds):
-            optimus, params = self.get_model_with_highest_ei()
+        self._say("\nOptimizing for %s rounds.\n-------------------------\n" % n_rounds)
 
-            #
+        for i in range(0, n_rounds):
+            optimus, params, ei = self.get_model_with_highest_ei()
+
             if optimus is None:
                 raise Exception("You need to call prepare() first.")
 
             index = self.optimi.index(optimus)
-            self._say("---\nRound %s of %s. Running %s Optimizer" % (i+1, n_rounds, self.names[index]))
+            self._say("---\nRound %s of %s. Running %s Optimizer with EI %s" % (i+1, n_rounds, self.names[index], ei))
 
             optimus.evaluate(params, X, y, max_eval_time=max_eval_time, current_best_score=self.global_best_score)
             self.global_best_score = max(self.global_best_score, optimus.current_best_score)
