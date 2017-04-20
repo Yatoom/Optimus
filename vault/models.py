@@ -8,7 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from extra.dual_imputer import DualImputer
 
 
-def get_models(categorical, features):
+def get_models(categorical, features, random_state):
     """
     Get a list of model configurations. Some configurations adapt to whether categorical data or missing values are 
     present in the dataset.
@@ -36,7 +36,7 @@ def get_models(categorical, features):
     models = [
         {
             "name": "Random Forest",
-            "estimator": RandomForestClassifier(n_jobs=-1, n_estimators=300, random_state=3),
+            "estimator": RandomForestClassifier(n_jobs=-1, n_estimators=300, random_state=random_state),
             "params": {
                 'criterion': ["gini", "entropy"],
                 'max_features': np.arange(0.05, 0.5, 0.05),
@@ -53,7 +53,7 @@ def get_models(categorical, features):
         },
         {
             "name": "SVM Kernels",
-            "estimator": SVC(probability=True),
+            "estimator": SVC(probability=True, random_state=random_state),
             "params": {
                 "C": np.logspace(-10, 10, num=21, base=2),
                 "gamma": np.logspace(-10, 0, num=11, base=2),
@@ -66,7 +66,7 @@ def get_models(categorical, features):
         },
         {
             "name": "Gradient Boosting",
-            "estimator": GradientBoostingClassifier(random_state=3, n_estimators=512),
+            "estimator": GradientBoostingClassifier(random_state=random_state, n_estimators=512),
             "params": {
                 "max_depth": [1, 2, 3],
                 "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
@@ -90,7 +90,7 @@ def get_models(categorical, features):
         },
         {
             "name": "LogisticRegression",
-            "estimator": LogisticRegression(n_jobs=-1, penalty="l2", random_state=3),
+            "estimator": LogisticRegression(n_jobs=-1, penalty="l2", random_state=random_state),
             "params": {
                 'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
                 'dual': [True, False],
