@@ -1,4 +1,6 @@
 import time
+import traceback
+
 from sklearn.model_selection import cross_val_score
 import numpy as np
 import warnings
@@ -48,7 +50,7 @@ class ModelOptimizer:
         self.current_best_time = np.inf
 
         # Setup maximizer
-        self.Maximizer = Maximizer(self.param_distributions)
+        self.Maximizer = Maximizer(param_distribution=self.param_distributions, timeout_score=self.timeout_score)
 
     def get_best(self):
         """
@@ -100,25 +102,28 @@ class ModelOptimizer:
         :return: A boolean specifying whether or not the evaluation was successful (i.e. finished in time) 
         """
         self._say(
-            "Evaluating parameters: %s with timeout %s" % (Converter.readable_parameters(parameters), max_eval_time))
+            "Evaluating parameters (timeout: %s s): %s" % (max_eval_time, Converter.readable_parameters(parameters)))
 
         # Initiate success variable
         success = True
 
-        # Build the estimator
-        best_estimator = Builder.build_pipeline(self.estimator, parameters)
-
         # Try evaluating within a time limit
         start = time.time()
         try:
+            # Build the estimator
+            best_estimator = Builder.build_pipeline(self.estimator, parameters)
+
+            # Evaluate with timeout
             with Timeout(max_eval_time):
                 score = cross_val_score(best_estimator, X, y, scoring=self.scoring, cv=self.cv, n_jobs=-1)
+
         except TimeoutError:
             self._say("Timeout error :(")
             success = False
             score = [self.timeout_score]
         except Exception:
             self._say("An error occurred with parameters", Converter.readable_parameters(parameters))
+            print(traceback.format_exc())
             success = False
             score = [self.timeout_score]
 
@@ -133,9 +138,9 @@ class ModelOptimizer:
         self.current_best_score = max(score, self.current_best_score)
 
         if current_best_score is not None:
-            self._say("Score: %s | best = %s" % (score, max(current_best_score, score)))
+            self._say("Score: %s | best: %s | time: %s" % (score, max(current_best_score, score), end))
         else:
-            self._say("Score: %s" % score)
+            self._say("Score: %s | time: %s" % (score, end))
 
         return success
 

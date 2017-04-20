@@ -96,11 +96,15 @@ class MultiOptimizer:
         """
         best_optimus = None
         best_score = 0
-        for optimus in self.optimi:
+        best_index = None
+        for index, optimus in enumerate(self.optimi):
             score = optimus.current_best_score
             if score > best_score:
                 best_score = score
                 best_optimus = optimus
+                best_index = index
+
+        self._say("Best model: %s. Best score: %s" % (self.names[best_index], best_score))
         return best_optimus.get_best()
 
     def optimize(self, X, y, n_rounds, max_eval_time=150):
@@ -125,6 +129,7 @@ class MultiOptimizer:
 
             optimus.evaluate(params, X, y, max_eval_time=max_eval_time, current_best_score=self.global_best_score)
             self.global_best_score = max(self.global_best_score, optimus.current_best_score)
+
         return self.get_best_model()
 
     def _say(self, *args):

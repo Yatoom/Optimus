@@ -1,6 +1,8 @@
-from numpy.linalg import LinAlgError
+import traceback
+
 from scipy.stats import norm
 from sklearn import clone
+
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern, ConstantKernel
 from sklearn.model_selection import ParameterSampler
@@ -10,16 +12,18 @@ import numpy as np
 
 
 class Maximizer:
-    def __init__(self, param_distribution, population_size=100):
+    def __init__(self, param_distribution, timeout_score=0, population_size=100):
         """
         A maximizer for finding the next best point to evaluate
         :param param_distribution: A dictionary of parameters and their distribution of values
         :param population_size: The number of samples to randomly draw from the hyper parameter, to use for finding the
         next best point.
+        :param timeout_score: The score value to insert in case of timeout 
         """
 
         self.param_distribution = param_distribution
         self.population_size = min(population_size, self.get_grid_size(param_distribution))
+        self.timeout_score = timeout_score
 
         # Setting up the Gaussian Process Regressor
         cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
@@ -79,15 +83,20 @@ class Maximizer:
         :return: The sample with the highest expected improvement
         """
 
-        if len(self.validated_scores) == 0:
+        # A little trick to count the number of validated scores that are not equal to the timeout_score value
+        # Numpy's count_nonzero is used to count non-False's instead of non-zeros.
+        num_valid_scores = np.count_nonzero(~(np.array(self.validated_scores) == self.timeout_score))
+
+        # Check if the number of validated scores (without timeouts) is zero
+        if num_valid_scores == 0:
             return np.random.choice([i for i in sampled_params]), 0
 
         # Fit parameters
         try:
             self.gp_score.fit(self.converted_params, self.validated_scores)
             self.gp_time.fit(self.converted_params, self.validated_times)
-        except LinAlgError as e:
-            print(str(e))
+        except:
+            print(traceback.format_exc())
 
         best_score = - np.inf
         best_setting = None
@@ -109,8 +118,8 @@ class Maximizer:
         :param original: The original estimate, will be returned if we can not calculate the realistic estimate
         :return: The realistic estimate
         """
-        params, scores = Converter.remove_timeouts(self.validated_params, self.validated_scores)
-        times, _ = Converter.remove_timeouts(self.validated_times, self.validated_scores)
+        params, scores = Converter.remove_timeouts(self.validated_params, self.validated_scores, self.timeout_score)
+        times, _ = Converter.remove_timeouts(self.validated_times, self.validated_scores, self.timeout_score)
 
         if len(scores) == 0:
             return original
