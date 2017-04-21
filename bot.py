@@ -12,9 +12,7 @@ def get_openml_splits(openml_task):
     """
     return [(i.train, i.test) for i in openml_task.iterate_all_splits()]
 
-# Task 29 seems problematic (too many timeouts)
-# 36, 18, 31, 11, 53, 3647, 37, , 15, 21, 37, 59, 23
-for t in [11]:
+for t in [36, 18, 31, 11, 53, 3647, 37, 29, 15, 21, 37, 59, 23]:
     print("\n===\nStarting task %s\n===\n" % t)
     start = time.time()
     task = openml.tasks.get_task(t)
@@ -30,7 +28,7 @@ for t in [11]:
     openml_splits = get_openml_splits(task)
 
     prime = MultiOptimizer(model_data, "accuracy", cv=openml_splits)
-    prime.prepare(X, y, n_rounds=4, max_eval_time=200, max_retries=4)
+    prime.prepare(X, y, n_rounds="auto", max_eval_time=200, max_retries=4)
     best_model = prime.optimize(X, y, 75, max_eval_time=200)
 
     print("Running OpenML task")

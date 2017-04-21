@@ -30,7 +30,8 @@ class MultiOptimizer:
         Prepare models by optimizing each model optimizer individually.
         :param X: List of features
         :param y: list of labels
-        :param n_rounds: Number of rounds to initiate each model 
+        :param n_rounds: Number of rounds to initiate each model. Use string "auto" to automatically determine number 
+        of rounds based on the number of parameters used. 
         :param max_eval_time: Maximum wall clock time in seconds for evaluating a single parameter setting
         :param max_retries: Maximum number of retries to find a parameter setting that does not result in an error. If
         the maximum number is exceeded, the model will be dropped. 
@@ -44,11 +45,12 @@ class MultiOptimizer:
 
         for index, optimus in enumerate(optimi):
 
-            self._say("\nPreparing %s Optimizer with %s rounds" % (self.names[index], n_rounds))
+            degrees = n_rounds if n_rounds != "auto" else len(optimus.param_distributions)
+            self._say("\nPreparing %s Optimizer with %s rounds" % (self.names[index], degrees))
 
-            for iteration in range(0, n_rounds):
+            for iteration in range(0, degrees):
 
-                self._say("---\nIteration %s/%s" % (iteration + 1, n_rounds))
+                self._say("---\nIteration %s/%s" % (iteration + 1, degrees))
 
                 # Retry a few times to find a parameter that can be evaluated within max_eval_time.
                 success = False
