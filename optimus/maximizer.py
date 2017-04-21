@@ -102,7 +102,8 @@ class Maximizer:
         best_setting = None
         for setting in sampled_params:
             converted_setting = Converter.convert_setting(setting, self.param_distribution)
-            score = self.get_ei(converted_setting, self.current_best_score)
+            score = self.get_ei_per_second(converted_setting, self.current_best_score)
+            # print("Score: %s| Setting: %s " % (score, Converter.readable_parameters(setting)))
             if score > best_score:
                 best_score = score
                 best_setting = setting
@@ -130,7 +131,7 @@ class Maximizer:
 
         setting = Converter.convert_setting(best_setting, self.param_distribution)
 
-        return self.get_ei(setting, self.current_best_score)
+        return self.get_ei_per_second(setting, self.current_best_score)
 
     def get_ei_per_second(self, point, current_best_score):
         """
@@ -160,7 +161,7 @@ class Maximizer:
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
         # (2.3.2 Exploration-exploitation trade-of)
         # Intuition: makes diff less important, while sigma becomes more important
-        diff = mu - best_score - 0.01
+        diff = mu - best_score  # - 0.01
 
         # When exploring, we should choose points where the surrogate variance is large.
         if sigma == 0:

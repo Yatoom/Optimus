@@ -36,18 +36,19 @@ def get_models(categorical, features, random_state):
     models = [
         {
             "name": "Random Forest",
-            "estimator": RandomForestClassifier(n_jobs=-1, n_estimators=300, random_state=random_state),
+            "estimator": RandomForestClassifier(n_jobs=-1, n_estimators=512, random_state=random_state),
             "params": {
                 'criterion': ["gini", "entropy"],
                 'max_features': np.arange(0.05, 0.5, 0.05),
-                'max_depth': [3, 5, 7, 9, None],
+                'max_depth': [8, 9, 10, 11, 12, None],
                 'min_samples_split': range(2, 21),
                 'min_samples_leaf': range(1, 21),
                 'bootstrap': [True, False],
                 '@preprocessor': make_conditional_steps([
                     (DI, any_missing, None),
                     (OHE, not any_missing and any_categorical),
-                    ([DI, OHE], any_missing and any_categorical)
+                    ([DI, OHE], any_missing and any_categorical),
+                    ([DI, PC], any_missing, PC)
                 ])
             }
         },

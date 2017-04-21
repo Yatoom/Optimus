@@ -1,3 +1,4 @@
+import threading
 import time
 import traceback
 
@@ -66,9 +67,10 @@ class ModelOptimizer:
         # Return the estimator with the best parameters
         return Builder.build_pipeline(self.estimator, best_setting)
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None, max_eval_time=200):
         """
         Fit method for stand-alone use of the Optimus single-model optimizer.
+        :param max_eval_time: Maximum evaluation time in seconds
         :param X: Sets of features
         :param y: Set of labels
         :return: A pipeline or a single estimator, set up with the best parameters
@@ -77,7 +79,7 @@ class ModelOptimizer:
         for i in range(0, self.n_iter):
             self._say("---\nIteration %s/%s" % (i + 1, self.n_iter))
             best_params, best_score = self.maximize(current_best_score=self.current_best_score, current_best_time=self.current_best_time)
-            self.evaluate(best_params, X, y, current_best_score=self.current_best_score)
+            self.evaluate(best_params, X, y, current_best_score=self.current_best_score, max_eval_time=max_eval_time)
 
         return self.get_best()
 
@@ -103,6 +105,7 @@ class ModelOptimizer:
         """
         self._say(
             "Evaluating parameters (timeout: %s s): %s" % (max_eval_time, Converter.readable_parameters(parameters)))
+        self._say("Number of threads used: %s" % threading.active_count())
 
         # Initiate success variable
         success = True
@@ -121,6 +124,20 @@ class ModelOptimizer:
             self._say("Timeout error :(")
             success = False
             score = [self.timeout_score]
+        except RuntimeError:
+            # It might be that it still works when we set n_jobs to 1 instead of -1.
+            # Below we check if we can set n_jobs to 1 and if so, recall this function again.
+            if "n_jobs" in self.estimator.get_params() and self.estimator.get_params()["n_jobs"] != 1:
+                self._say("Runtime error, trying again with n_jobs=1.")
+                self.estimator.set_params(n_jobs=1)
+                return self.evaluate(parameters, X, y, max_eval_time, current_best_score)
+
+            # Otherwise, we're going to catch the error as we normally do
+            else:
+                print(traceback.format_exc())
+                success = False
+                score = [self.timeout_score]
+
         except Exception:
             self._say("An error occurred with parameters", Converter.readable_parameters(parameters))
             print(traceback.format_exc())
