@@ -29,10 +29,8 @@ class Converter:
         for key in settings_copy:
             value = settings_copy[key]
 
-            if not isinstance(value, (float, int)):
-
-                # Find the position of the value in the list
-                settings_copy[key] = param_distributions[key].index(value)
+            # Find the position of the value in the list
+            settings_copy[key] = param_distributions[key].index(value)
 
         return list(settings_copy.values())
 

@@ -37,7 +37,7 @@ class Maximizer:
             normalize_y=True, random_state=3, alpha=0.0,
             n_restarts_optimizer=2)
 
-        self.gp_score = clone(gp)  # type: GaussianProcessRegressor
+        self.gp_score = gp  # type: GaussianProcessRegressor
         self.gp_time = clone(gp)  # type: GaussianProcessRegressor
 
         # Initiating information about evaluated parameters
@@ -151,6 +151,12 @@ class Maximizer:
         :param current_best_score: The current score optimum
         :return: Expected improvement value
         """
+
+        # This can be enabled as an extra check. It seems to have no rounding errors, which may be caused by converting
+        # to a numpy array.
+        # if point in self.gp_score.X_train_.tolist():
+        #     return 0
+
         point = np.array(point).reshape(1, -1)
         mu, sigma = self.gp_score.predict(point, return_std=True)
         best_score = current_best_score
@@ -163,8 +169,9 @@ class Maximizer:
         # Intuition: makes diff less important, while sigma becomes more important
         diff = mu - best_score  # - 0.01
 
-        # When exploring, we should choose points where the surrogate variance is large.
-        if sigma == 0:
+        # If sigma is zero, this means we have already seen that point, so we do not need to evaluate it again.
+        # We use a value slightly higher than 0 in case of small machine rounding errors.
+        if sigma <= 1e-05:
             return 0
 
         # Expected improvement function
