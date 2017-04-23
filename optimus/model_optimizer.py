@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 class ModelOptimizer:
     def __init__(self, estimator, param_distributions, n_iter=10, population_size=100, scoring=None, cv=10,
-                 verbose=True, timeout_score=0):
+                 verbose=True, timeout_score=0, use_ei_per_second=False):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         :param estimator: The estimator to optimize
@@ -29,6 +29,7 @@ class ModelOptimizer:
         :param cv: A sklearn-compatible cross-validation object
         :param verbose: The verbosity level (boolean)
         :param timeout_score: The score value to insert in case of timeout 
+        :param use_ei_per_second: Whether to use the standard EI or the EI / sqrt(second)
         """
 
         # Accept parameters
@@ -51,7 +52,8 @@ class ModelOptimizer:
         self.current_best_time = np.inf
 
         # Setup maximizer
-        self.Maximizer = Maximizer(param_distribution=self.param_distributions, timeout_score=self.timeout_score)
+        self.Maximizer = Maximizer(param_distribution=self.param_distributions, timeout_score=self.timeout_score,
+                                   use_ei_per_second=use_ei_per_second)
 
     def get_best(self):
         """
@@ -77,10 +79,9 @@ class ModelOptimizer:
         """
         self._say("Bayesian search with %s iterations..." % self.n_iter)
         for i in range(0, self.n_iter):
-            self._say("---\nIteration %s/%s" % (i + 1, self.n_iter))
             best_params, best_score = self.maximize(current_best_score=self.current_best_score, current_best_time=self.current_best_time)
+            self._say("---\nIteration %s/%s. EI: %s" % (i + 1, self.n_iter, best_score))
             self.evaluate(best_params, X, y, current_best_score=self.current_best_score, max_eval_time=max_eval_time)
-
         return self.get_best()
 
     def maximize(self, current_best_score, current_best_time):
@@ -105,7 +106,6 @@ class ModelOptimizer:
         """
         self._say(
             "Evaluating parameters (timeout: %s s): %s" % (max_eval_time, Converter.readable_parameters(parameters)))
-        self._say("Number of threads used: %s" % threading.active_count())
 
         # Initiate success variable
         success = True
@@ -134,7 +134,8 @@ class ModelOptimizer:
 
             # Otherwise, we're going to catch the error as we normally do
             else:
-                print(traceback.format_exc())
+                print("RuntimeError")
+                # print(traceback.format_exc())
                 success = False
                 score = [self.timeout_score]
 

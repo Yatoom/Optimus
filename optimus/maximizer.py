@@ -12,15 +12,17 @@ import numpy as np
 
 
 class Maximizer:
-    def __init__(self, param_distribution, timeout_score=0, population_size=100):
+    def __init__(self, param_distribution, timeout_score=0, population_size=100, use_ei_per_second=False):
         """
         A maximizer for finding the next best point to evaluate
         :param param_distribution: A dictionary of parameters and their distribution of values
         :param population_size: The number of samples to randomly draw from the hyper parameter, to use for finding the
         next best point.
-        :param timeout_score: The score value to insert in case of timeout 
+        :param timeout_score: The score value to insert in case of timeout
+        :param use_ei_per_second: Whether to use the standard EI or the EI / sqrt(second)
         """
 
+        self.use_ei_per_second = use_ei_per_second
         self.param_distribution = param_distribution
         self.population_size = min(population_size, self.get_grid_size(param_distribution))
         self.timeout_score = timeout_score
@@ -94,7 +96,8 @@ class Maximizer:
         # Fit parameters
         try:
             self.gp_score.fit(self.converted_params, self.validated_scores)
-            self.gp_time.fit(self.converted_params, self.validated_times)
+            if self.use_ei_per_second:
+                self.gp_time.fit(self.converted_params, self.validated_times)
         except:
             print(traceback.format_exc())
 
@@ -127,7 +130,9 @@ class Maximizer:
 
         converted_settings = Converter.convert_settings(params, self.param_distribution)
         self.gp_score.fit(converted_settings, scores)
-        self.gp_time.fit(converted_settings, times)
+
+        if self.use_ei_per_second:
+            self.gp_time.fit(converted_settings, times)
 
         setting = Converter.convert_setting(best_setting, self.param_distribution)
 
@@ -140,9 +145,12 @@ class Maximizer:
         :param current_best_score: The current score optimum
         :return: EI / sqrt(estimated seconds)
         """
-        seconds = self.gp_time.predict(point)
         ei = self.get_ei(point, current_best_score)
-        return ei / np.sqrt(seconds)
+
+        if self.use_ei_per_second:
+            seconds = self.gp_time.predict(point)
+            return ei / np.sqrt(seconds)
+        return ei
 
     def get_ei(self, point, current_best_score):
         """
@@ -152,10 +160,9 @@ class Maximizer:
         :return: Expected improvement value
         """
 
-        # This can be enabled as an extra check. It seems to have no rounding errors, which may be caused by converting
-        # to a numpy array.
-        # if point in self.gp_score.X_train_.tolist():
-        #     return 0
+        # Extra check. This way seems to work around rounding errors, and it can be computed surprisingly fast.
+        if point in self.gp_score.X_train_.tolist():
+            return 0
 
         point = np.array(point).reshape(1, -1)
         mu, sigma = self.gp_score.predict(point, return_std=True)

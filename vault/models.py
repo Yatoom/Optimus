@@ -165,7 +165,7 @@ def get_models(categorical, features, random_state):
                     (None, not any_missing),
                     ([DI, SS], any_missing, SS),
                     ([DI, OHE, SS], any_missing and any_categorical),
-                    ([SS, OHE], not any_missing and any_categorical)
+                    ([OHE, SS], not any_missing and any_categorical)
                 ])
             }
         },

@@ -5,13 +5,14 @@ from copy import copy
 
 class MultiOptimizer:
 
-    def __init__(self, models, scoring="accuracy", cv=10, verbose=True):
+    def __init__(self, models, scoring="accuracy", cv=10, verbose=True, use_ei_per_second=False):
         """
         Optimizer for multiple models.
         :param models: Dictionary with a 'name': string, an 'estimator': Sklearn Estimator and 'params': dictionary.
         :param scoring: A Sklearn scorer: http://scikit-learn.org/stable/modules/model_evaluation.html
         :param cv: A Sklearn Cross-Validation object or number
         :param verbose: A boolean to control verbosity
+        :param use_ei_per_second: Whether to use the standard EI or the EI / sqrt(second)
         """
         self.optimi = []
         self.names = []
@@ -22,7 +23,7 @@ class MultiOptimizer:
 
         for model in models:
             self.optimi.append(ModelOptimizer(model["estimator"], model["params"], n_iter=None, population_size=100,
-                                              scoring=scoring, cv=cv, verbose=True))
+                                              scoring=scoring, cv=cv, verbose=True, use_ei_per_second=use_ei_per_second))
             self.names.append(model["name"])
 
     def prepare(self, X, y, n_rounds=1, max_eval_time=150, max_retries=3):
