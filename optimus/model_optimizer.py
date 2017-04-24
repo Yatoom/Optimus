@@ -120,7 +120,7 @@ class ModelOptimizer:
             with Timeout(max_eval_time):
                 score = cross_val_score(best_estimator, X, y, scoring=self.scoring, cv=self.cv, n_jobs=-1)
 
-        except TimeoutError:
+        except (GeneratorExit, OSError, TimeoutError):
             self._say("Timeout error :(")
             success = False
             score = [self.timeout_score]
@@ -141,7 +141,7 @@ class ModelOptimizer:
 
         except Exception:
             self._say("An error occurred with parameters", Converter.readable_parameters(parameters))
-            print(traceback.format_exc())
+            # print(traceback.format_exc())
             success = False
             score = [self.timeout_score]
 

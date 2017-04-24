@@ -118,10 +118,6 @@ def get_models(categorical, features, random_state):
                 "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
                 "algorithm": ["SAMME", "SAMME.R"],
                 "n_estimators": [4, 8, 16, 32, 64, 128, 256, 512],
-                "base_estimator": [
-                    DecisionTreeClassifier(random_state=random_state),
-                    ExtraTreeClassifier(random_state=random_state)
-                ],
                 "@preprocessor": make_conditional_steps([
                     (DI, any_missing, None)
                 ])

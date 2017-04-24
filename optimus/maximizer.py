@@ -123,7 +123,6 @@ class Maximizer:
         :return: The realistic estimate
         """
         params, scores = Converter.remove_timeouts(self.validated_params, self.validated_scores, self.timeout_score)
-        times, _ = Converter.remove_timeouts(self.validated_times, self.validated_scores, self.timeout_score)
 
         if len(scores) == 0:
             return original
@@ -132,6 +131,7 @@ class Maximizer:
         self.gp_score.fit(converted_settings, scores)
 
         if self.use_ei_per_second:
+            times, _ = Converter.remove_timeouts(self.validated_times, self.validated_scores, self.timeout_score)
             self.gp_time.fit(converted_settings, times)
 
         setting = Converter.convert_setting(best_setting, self.param_distribution)
