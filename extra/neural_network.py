@@ -153,6 +153,7 @@ class NeuralNetwork(BaseEstimator, ClassifierMixin):
             "dropout": self.dropout,
             "readout": self.readout,
             "metrics": self.metrics,
+            "n_layers": self.n_layers,
             "batch_size": self.batch_size,
             "epochs": self.epochs,
             "verbose": self.verbose
