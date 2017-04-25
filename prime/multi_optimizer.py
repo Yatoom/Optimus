@@ -1,6 +1,5 @@
 from optimus.model_optimizer import ModelOptimizer
 import numpy as np
-from copy import copy
 
 
 class MultiOptimizer:
@@ -40,11 +39,11 @@ class MultiOptimizer:
 
         self._say("\nPreparing all models for %s rounds.\n----------------------------------" % n_rounds)
 
-        # In case we want to drop model optimizers from the list, we still need the un-modified original list, so that
-        # we do not cause problems in the for-loop.
-        optimi = copy(self.optimi)
+        # Keep a list of indices of model optimizers that could not successfully evaluate their parameters, so that we
+        # can remove them later.
+        to_remove = []
 
-        for index, optimus in enumerate(optimi):
+        for index, optimus in enumerate(self.optimi):
 
             degrees = n_rounds if n_rounds != "auto" else len(optimus.param_distributions)
             self._say("\nPreparing %s Optimizer with %s rounds" % (self.names[index], degrees))
@@ -64,14 +63,15 @@ class MultiOptimizer:
 
                 # Drop if we never got success
                 if not success:
-                    self.optimi.pop(index)
-                    self.names.pop(index)
+                    to_remove.append(index)
                     break
 
                 # Update global best score
                 self.global_best_time = min(self.global_best_time, optimus.current_best_time)
                 self.global_best_score = max(self.global_best_score, optimus.current_best_score)
-            print("Best time:", self.global_best_time)
+
+        self.optimi = [i for j, i in enumerate(self.optimi) if j not in to_remove]
+        self.names = [i for j, i in enumerate(self.names) if j not in to_remove]
 
     def get_model_with_highest_ei(self):
         """
@@ -95,10 +95,10 @@ class MultiOptimizer:
     def get_best_model(self):
         """
         Gets the best model we have found so far. 
-        :return: Returns the best model
+        :return: Returns the best model (Sklearn model), the name of the model (string) and its best score (float)
         """
         best_optimus = None
-        best_score = 0
+        best_score = -np.inf
         best_index = None
         for index, optimus in enumerate(self.optimi):
             score = optimus.current_best_score
@@ -108,7 +108,8 @@ class MultiOptimizer:
                 best_index = index
 
         self._say("Best model: %s. Best score: %s" % (self.names[best_index], best_score))
-        return best_optimus.get_best()
+
+        return best_optimus.get_best(), self.names[best_index], best_score
 
     def optimize(self, X, y, n_rounds, max_eval_time=150):
         """
@@ -117,7 +118,8 @@ class MultiOptimizer:
         :param y: List of labels
         :param n_rounds: Number of rounds
         :param max_eval_time: Maximum wall clock time in seconds for evaluating a single parameter setting
-        :return: Returns the best model
+        :return: If a best model could be found successfully, it will return the best model (Sklearn model), the name 
+        of the model (string) and its best score (float). If all models failed, it will return None.
         """
         self._say("\nOptimizing for %s rounds.\n-------------------------\n" % n_rounds)
 
@@ -125,7 +127,8 @@ class MultiOptimizer:
             optimus, params, ei = self.get_model_with_highest_ei()
 
             if optimus is None:
-                raise Exception("You need to call prepare() first.")
+                print("Either all models failed, or you need to call prepare() first.")
+                return None
 
             index = self.optimi.index(optimus)
             self._say("---\nRound %s of %s. Running %s Optimizer with EI %s" % (i+1, n_rounds, self.names[index], ei))
