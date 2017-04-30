@@ -19,6 +19,7 @@ class MultiOptimizer:
         self.global_best_score = -np.inf
         self.global_best_time = np.inf
         self.verbose = verbose
+        self.results = []
 
         for model in models:
             self.optimi.append(ModelOptimizer(model["estimator"], model["params"], n_iter=None, population_size=100,
@@ -69,6 +70,8 @@ class MultiOptimizer:
                 # Update global best score
                 self.global_best_time = min(self.global_best_time, optimus.current_best_time)
                 self.global_best_score = max(self.global_best_score, optimus.current_best_score)
+
+                self.results.append({"score": optimus.current_best_score, "model": type(optimus.estimator).__name__})
 
         self.optimi = [i for j, i in enumerate(self.optimi) if j not in to_remove]
         self.names = [i for j, i in enumerate(self.names) if j not in to_remove]
@@ -135,8 +138,48 @@ class MultiOptimizer:
 
             optimus.evaluate(params, X, y, max_eval_time=max_eval_time, current_best_score=self.global_best_score)
             self.global_best_score = max(self.global_best_score, optimus.current_best_score)
-
+            self.results.append({"score": optimus.current_best_score, "model": type(optimus.estimator).__name__})
         return self.get_best_model()
+
+    def reset(self):
+        self.global_best_score = -np.inf
+        self.global_best_time = np.inf
+        for optimus in self.optimi:
+            optimus.validated_params = []
+            optimus.validated_scores = []
+            optimus.validated_times = []
+            optimus.current_best_setting = None
+            optimus.current_best_score = -np.inf
+            optimus.current_best_time = np.inf
+
+    def get_all_validated_params(self):
+        """
+        Get all the validated parameters from the underlying model optimizers.
+        :return: A dictionary where the name of the estimator maps to a dictionary where 'parameters' maps to its 
+        validated parameters, and 'scores' maps to the corresponding scores. 
+        """
+        result = {}
+        for optimus in self.optimi:
+            # Get an official name and all validated parameters
+            name = type(optimus.estimator).__name__
+            params = optimus.validated_params
+            scores = optimus.validated_scores
+
+            # Check if name is unique, or add a number to make it unique
+            i = 0
+            new_name = name
+            while new_name in result:
+                new_name = "%s_%s" % (name, i)
+                i += 1
+
+            # Add parameters and scores to the results
+            result[name] = {
+                "parameters": params,
+                "scores": scores,
+                "best": float(np.max(scores))
+            }
+
+        return result
 
     def _say(self, *args):
         """

@@ -12,7 +12,7 @@ from sklearn.tree import ExtraTreeClassifier, DecisionTreeClassifier
 from extra.dual_imputer import DualImputer
 
 
-def get_models(categorical, features, random_state):
+def get_models(categorical, any_missing, random_state):
     """
     Get a list of model configurations. Some configurations adapt to whether categorical data or missing values are 
     present in the dataset.
@@ -30,7 +30,7 @@ def get_models(categorical, features, random_state):
     PF = PolynomialFeatures()
 
     # Are there missing values?
-    any_missing = np.isnan(features).any()
+    # any_missing = np.isnan(features).any()
 
     # Are there any categorical features?
     any_categorical = np.any(categorical)
@@ -38,6 +38,18 @@ def get_models(categorical, features, random_state):
     print("Dataset has missing values: %s. Dataset has categorical values: %s" % (any_missing, any_categorical))
 
     models = [
+        {
+            "name": "LogisticRegression",
+            "estimator": LogisticRegression(n_jobs=-1, penalty="l2", random_state=random_state),
+            "params": {
+                'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
+                'dual': [True, False],
+                "@preprocessor": make_conditional_steps([
+                    (DI, any_missing, None),
+                    ([DI, SS], any_missing, SS)
+                ])
+            }
+        },
         {
             "name": "Random Forest",
             "estimator": RandomForestClassifier(n_jobs=-1, n_estimators=512, random_state=random_state),
@@ -136,18 +148,6 @@ def get_models(categorical, features, random_state):
         #         ])
         #     }
         # },
-        {
-            "name": "LogisticRegression",
-            "estimator": LogisticRegression(n_jobs=-1, penalty="l2", random_state=random_state),
-            "params": {
-                'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
-                'dual': [True, False],
-                "@preprocessor": make_conditional_steps([
-                    (DI, any_missing, None),
-                    ([DI, SS], any_missing, SS)
-                ])
-            }
-        },
         {
             "name": "Multi Layer Perceptron",
             "estimator": MLPClassifier(max_iter=500, random_state=random_state),
