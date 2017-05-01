@@ -1,89 +1,84 @@
+import json
+
 from sklearn.model_selection._search import BaseSearchCV
-import numpy as np
-from prime.multi_optimizer import MultiOptimizer
+from optimus.converter import Converter
+from optimus.model_optimizer import ModelOptimizer
 from vault import models
+import sklearn
 
-
-class Optimus(BaseSearchCV):
-    def __init__(self, scoring="accuracy", cv=10, verbose=True, use_ei_per_second=False, prep_rounds="auto",
-                 opt_rounds=50, max_eval_time=150, max_prep_retries=4, categorical=None, missing=False):
-
-        # Get models
-        if categorical is None:
-            categorical = []
-        self.categorical = categorical
-        self.missing = missing
-        self.models = models.get_models(categorical, missing, random_state=3)
+class OptimusCV(BaseSearchCV):
+    def __init__(self, estimator, param_distributions, n_iter=10, population_size=100, scoring="accuracy", cv=10,
+                 verbose=True, timeout_score=0, use_ei_per_second=False, max_eval_time=200):
+        # Dummy call to super
+        super().__init__(None)
 
         # Setup optimizer
+        self.optimizer = ModelOptimizer(estimator=estimator, param_distributions=param_distributions, n_iter=n_iter,
+                                        population_size=population_size, scoring=scoring, cv=cv, verbose=verbose,
+                                        timeout_score=timeout_score, use_ei_per_second=use_ei_per_second)
+        # Accept parameters
+        self.estimator = estimator
+        self.param_distributions = param_distributions
+        self.n_iter = n_iter
+        self.population_size = population_size
         self.scoring = scoring
         self.cv = cv
         self.verbose = verbose
+        self.timeout_score = timeout_score
         self.use_ei_per_second = use_ei_per_second
-        self.optimizer = MultiOptimizer(self.models, scoring, cv, verbose, use_ei_per_second=use_ei_per_second)
-
-        # Accept other parameters
-        self.prep_rounds = prep_rounds
         self.max_eval_time = max_eval_time
-        self.opt_rounds = opt_rounds
-        self.max_prep_retries = max_prep_retries
 
-        # Setup initial values
-        self.best = None
-        self.results = None
+        # Setup initial parameters
+        self.validated_params = []
+        self.validated_scores = []
         self.best_estimator_ = None
-
-        # We don't actually want to use the BaseSearchCV, we just need to be an instance of it for compatibility with
-        # OpenML. So we don't need to send actual stuff to the super class.
-        super().__init__(None, None, None, None)
-
-    @property
-    def cv_results_(self):
-        return {
-            "mean_test_score": [item["score"] for item in self.results],
-            "param_model": [item["model"] for item in self.results],
-        }
-
-    @property
-    def best_index_(self):
-        return np.argmax([item["score"] for item in self.results])
+        self.cv_results_ = None
+        self.best_index_ = None
 
     def fit(self, X, y):
-        self.optimizer.reset()
-        print("Preparing\n---------")
-        self.optimizer.prepare(X, y, n_rounds=self.prep_rounds, max_eval_time=self.max_eval_time,
-                               max_retries=self.max_prep_retries)
-        print("Optimizing\n----------")
-        best, name, score = self.optimizer.optimize(X, y, n_rounds=self.opt_rounds, max_eval_time=self.max_eval_time)
-        # results = self.optimizer.get_all_validated_params()
-        results = self.optimizer.results
+        self.optimizer.fit(X, y, max_eval_time=self.max_eval_time)
+        self.validated_params = self.optimizer.validated_params
+        self.validated_scores = self.optimizer.validated_scores
 
-        self.best = best
-        self.results = results
-
-        self.best_estimator_ = best.fit(X, y)
+        self._store_results()
 
         return self
 
+    def _store_results(self):
+        self.best_estimator_ = self.optimizer.get_best().fit(X, y)
+        self.cv_results_ = {
+            "mean_test_score": self.validated_scores,
+            "params": self.validated_params
+        }
+
+        for key in self.validated_params[0]:
+            self.cv_results_["param_%s" % key] = []
+
+        for setting in self.validated_params:
+            for key, value in setting.items():
+                value = Converter.make_readable(value)
+                self.cv_results_["param_%s" % key].append(value)
+
     def predict(self, X):
-        return self.best.predict(X)
+        return self.best_estimator_.predict(X)
 
     def predict_proba(self, X):
-        return self.best.predict_proba(X)
+        return self.best_estimator_.predict_proba(X)
 
-    def get_params(self, deep=False):
+    def get_params(self, deep=True):
         params = {
+            "estimator": self.estimator.get_params(),
+            "param_distributions": self.param_distributions,
+            "n_iter": self.n_iter,
+            "population_size": self.population_size,
             "scoring": self.scoring,
             "cv": self.cv,
             "verbose": self.verbose,
+            "timeout_score": self.timeout_score,
             "use_ei_per_second": self.use_ei_per_second,
-            "prep_rounds": self.prep_rounds,
-            "max_eval_time": self.max_eval_time,
-            "opt_rounds": self.opt_rounds,
-            "max_prep_retries": self.max_prep_retries,
-            "categorical": self.categorical,
-            "missing": self.missing
+            "max_eval_time": self.max_eval_time
         }
+        json.dumps(params)
         return params
 
     def set_params(self, **parameters):
