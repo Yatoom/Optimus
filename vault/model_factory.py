@@ -1,3 +1,5 @@
+from copy import copy, deepcopy
+
 import numpy as np
 
 
@@ -41,8 +43,8 @@ def generate_config(X, categorical, random_state):
         # Random Forests
         {
             "estimator": (
-               "sklearn.ensemble.RandomForestClassifier",
-               {"n_jobs": -1, "n_estimators": 512, "random_state": random_state}
+                "sklearn.ensemble.RandomForestClassifier",
+                {"n_jobs": -1, "n_estimators": 512, "random_state": random_state}
             ),
             "params": {
                 'criterion': ["gini", "entropy"],
@@ -117,8 +119,8 @@ def generate_config(X, categorical, random_state):
         # Random Tree
         {
             "estimator": (
-              "sklearn.tree.ExtraTreeClassifier",
-              {"random_state": random_state, "max_depth": None}
+                "sklearn.tree.ExtraTreeClassifier",
+                {"random_state": random_state, "max_depth": None}
             ),
             "params": {
                 "criterion": ["gini", "entropy"],
@@ -193,30 +195,34 @@ def generate_config(X, categorical, random_state):
 
 def init_model_config(model_configuration):
     """Initialize model configuration 
-    
+
     Parameters
     ----------
-    model_configuration
-
+    model_configuration: {list, model_configuration}
+        A model configuration, or a list of model configurations
     Returns
     -------
-
+    Returns the instantiated model
     """
-    configurations = []
-    for model in model_configuration:
+    c_model_config = deepcopy(model_configuration)
+    if isinstance(c_model_config, list):
+        configurations = []
+        for model in c_model_config:
+            configurations.append(init_model_config(model))
+        return configurations
 
-        if "@preprocessor" in model["params"]:
-            model["params"]["@preprocessor"] = source_decode_all(model["params"]["@preprocessor"])
+    if "@preprocessor" in c_model_config["params"]:
+        c_model_config["params"]["@preprocessor"] = source_decode_all(
+            c_model_config["params"]["@preprocessor"])
 
-        estimator, init_params = model["estimator"]
+    estimator, init_params = c_model_config["estimator"]
 
-        config = {
-            "estimator": source_decode(estimator, init_params),
-            "params": model["params"]
-        }
+    config = {
+        "estimator": source_decode(estimator, init_params),
+        "params": c_model_config["params"]
+    }
 
-        configurations.append(config)
-    return configurations
+    return config
 
 
 def conditional_items(conditional_steps):
@@ -300,7 +306,7 @@ def source_decode(sourcecode, init_params):
         for key in init_params:
             if key[0] == "!":
                 init_params[key[1:]] = source_decode_all(init_params[key])
-                del(init_params[key])
+                del (init_params[key])
 
         # Create class and instantiate with init_params
         obj = eval(class_name)(**init_params)

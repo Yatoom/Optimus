@@ -1,16 +1,22 @@
-import json
-
+import numpy as np
 from sklearn.model_selection._search import BaseSearchCV
 from optimus.converter import Converter
 from optimus.model_optimizer import ModelOptimizer
-from vault import models
-import sklearn
+from vault import model_factory
+
 
 class OptimusCV(BaseSearchCV):
-    def __init__(self, estimator, param_distributions, n_iter=10, population_size=100, scoring="accuracy", cv=10,
+    def __init__(self, model_config, n_iter=10, population_size=100, scoring="accuracy", cv=10,
                  verbose=True, timeout_score=0, use_ei_per_second=False, max_eval_time=200):
         # Dummy call to super
         super().__init__(None)
+
+        # Setup model
+        self.model_config = model_config
+        self.model = model_factory.init_model_config(self.model_config)
+        print(self.model_config)
+        estimator = self.model["estimator"]
+        param_distributions = self.model["params"]
 
         # Setup optimizer
         self.optimizer = ModelOptimizer(estimator=estimator, param_distributions=param_distributions, n_iter=n_iter,
@@ -40,16 +46,18 @@ class OptimusCV(BaseSearchCV):
         self.validated_params = self.optimizer.validated_params
         self.validated_scores = self.optimizer.validated_scores
 
-        self._store_results()
+        self._store_results(X, y)
 
         return self
 
-    def _store_results(self):
+    def _store_results(self, X, y):
         self.best_estimator_ = self.optimizer.get_best().fit(X, y)
         self.cv_results_ = {
             "mean_test_score": self.validated_scores,
             "params": self.validated_params
         }
+
+        self.best_index_ = np.argmax(self.cv_results_["mean_test_score"])
 
         for key in self.validated_params[0]:
             self.cv_results_["param_%s" % key] = []
@@ -67,8 +75,7 @@ class OptimusCV(BaseSearchCV):
 
     def get_params(self, deep=True):
         params = {
-            "estimator": self.estimator.get_params(),
-            "param_distributions": self.param_distributions,
+            "model_config": self.model_config,
             "n_iter": self.n_iter,
             "population_size": self.population_size,
             "scoring": self.scoring,
@@ -78,7 +85,6 @@ class OptimusCV(BaseSearchCV):
             "use_ei_per_second": self.use_ei_per_second,
             "max_eval_time": self.max_eval_time
         }
-        json.dumps(params)
         return params
 
     def set_params(self, **parameters):
