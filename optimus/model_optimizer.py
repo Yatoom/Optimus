@@ -77,7 +77,11 @@ class ModelOptimizer:
         :param y: Set of labels
         :return: A pipeline or a single estimator, set up with the best parameters
         """
+
+        # Limit the number of iterations for a grid that is too small
+        self.n_iter = min(Maximizer.get_grid_size(self.param_distributions), self.n_iter)
         self._say("Bayesian search with %s iterations..." % self.n_iter)
+
         for i in range(0, self.n_iter):
             best_params, best_score = self.maximize(current_best_score=self.current_best_score, current_best_time=self.current_best_time)
             self._say("---\nIteration %s/%s. EI: %s" % (i + 1, self.n_iter, best_score))
