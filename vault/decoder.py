@@ -98,7 +98,7 @@ def decode_params(params, prefix="!", remove_prefixes=True):
     # Make a copy
     params_copy = copy(params)
 
-    for key in params_copy:
+    for key in params:
 
         # Check if key starts with prefix
         if key[0:len(prefix)] == prefix:

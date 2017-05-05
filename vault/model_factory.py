@@ -8,6 +8,9 @@ def generate_config(X, categorical, random_state):
     any_missing = bool(np.isnan(X).any())
     any_categorical = bool(np.any(categorical))
 
+    print("Any missing:", any_missing)
+    print("Any categorical", any_categorical)
+
     # Pre-processing operators
     DI = (
         "extra.dual_imputer.DualImputer",
