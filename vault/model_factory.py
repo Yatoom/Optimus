@@ -1,5 +1,5 @@
 from copy import copy, deepcopy
-
+from vault import decoder
 import numpy as np
 
 
@@ -33,7 +33,7 @@ def generate_config(X, categorical, random_state):
             "params": {
                 'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
                 'dual': [True, False],
-                "@preprocessor": conditional_items([
+                "!@preprocessor": conditional_items([
                     (DI, any_missing, None),
                     ([DI, SS], any_missing, SS)
                 ])
@@ -53,7 +53,7 @@ def generate_config(X, categorical, random_state):
                 'min_samples_split': list(range(2, 21)),
                 'min_samples_leaf': list(range(1, 21)),
                 'bootstrap': [True, False],
-                '@preprocessor': conditional_items([
+                '!@preprocessor': conditional_items([
                     (DI, any_missing, None),
                     (OHE, not any_missing and any_categorical),
                     ([DI, OHE], any_missing and any_categorical),
@@ -75,7 +75,7 @@ def generate_config(X, categorical, random_state):
                 'min_samples_split': list(range(2, 21)),
                 'min_samples_leaf': list(range(1, 21)),
                 'bootstrap': [True, False],
-                '@preprocessor': conditional_items([
+                '!@preprocessor': conditional_items([
                     (DI, any_missing, None),
                     (OHE, not any_missing and any_categorical),
                     ([DI, OHE], any_missing and any_categorical),
@@ -94,7 +94,7 @@ def generate_config(X, categorical, random_state):
                 "C": np.logspace(-10, 10, num=21, base=2).tolist(),
                 "gamma": np.logspace(-10, 0, num=11, base=2).tolist(),
                 "kernel": ["linear", "poly", "rbf"],
-                "@preprocessor": conditional_items([
+                "!@preprocessor": conditional_items([
                     (DI, any_missing, None),
                     ([DI, SS], any_missing, SS)
                 ])
@@ -110,7 +110,7 @@ def generate_config(X, categorical, random_state):
             "params": {
                 "max_depth": [1, 2, 3],
                 "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
-                "@preprocessor": conditional_items([
+                "!@preprocessor": conditional_items([
                     (DI, any_missing, None)
                 ])
             }
@@ -125,7 +125,7 @@ def generate_config(X, categorical, random_state):
             "params": {
                 "criterion": ["gini", "entropy"],
                 "max_features": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None],
-                "@preprocessor": conditional_items([
+                "!@preprocessor": conditional_items([
                     (DI, any_missing, None),
                     (OHE, not any_missing and any_categorical),
                     ([DI, OHE], any_missing and any_categorical)
@@ -146,7 +146,7 @@ def generate_config(X, categorical, random_state):
                 "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
                 "algorithm": ["SAMME", "SAMME.R"],
                 "n_estimators": [4, 8, 16, 32, 64, 128, 256, 512],
-                "@preprocessor": conditional_items([
+                "!@preprocessor": conditional_items([
                     (DI, any_missing, None)
                 ])
             }
@@ -164,7 +164,7 @@ def generate_config(X, categorical, random_state):
                 "learning_rate": ['constant', 'adaptive'],
                 "hidden_layer_sizes": [(100,), (100, 100), (100, 100, 100)],
                 "alpha": [1e-05, 1e-04, 1e-03],
-                "@preprocessor": conditional_items([
+                "!@preprocessor": conditional_items([
                     (None, not any_missing),
                     ([DI, SS], any_missing, SS),
                     ([DI, OHE, SS], any_missing and any_categorical),
@@ -184,7 +184,7 @@ def generate_config(X, categorical, random_state):
                 "tol": [0.001, 0.001, 0.01, 0.1],
                 "kernel": ["linear", "poly", "rbf"],
 
-                "@preprocessor": conditional_items([
+                "!@preprocessor": conditional_items([
                     (DI, any_missing, None),
                     ([DI, SS], any_missing, SS)
                 ])
@@ -194,35 +194,20 @@ def generate_config(X, categorical, random_state):
 
 
 def init_model_config(model_configuration):
-    """Initialize model configuration 
+    # Make copy
+    model_config_copy = deepcopy(model_configuration)
 
-    Parameters
-    ----------
-    model_configuration: {list, model_configuration}
-        A model configuration, or a list of model configurations
-    Returns
-    -------
-    Returns the instantiated model
-    """
-    c_model_config = deepcopy(model_configuration)
-    if isinstance(c_model_config, list):
+    # Loop over list if it is a list and recursively call this function
+    if isinstance(model_config_copy, list):
         configurations = []
-        for model in c_model_config:
+        for model in model_config_copy:
             configurations.append(init_model_config(model))
         return configurations
 
-    if "@preprocessor" in c_model_config["params"]:
-        c_model_config["params"]["@preprocessor"] = source_decode_all(
-            c_model_config["params"]["@preprocessor"])
-
-    estimator, init_params = c_model_config["estimator"]
-
-    config = {
-        "estimator": source_decode(estimator, init_params),
-        "params": c_model_config["params"]
+    return {
+        "estimator": decoder.decode_sources(model_config_copy["estimator"], special_prefix="!"),
+        "params": decoder.decode_params(model_config_copy["params"], prefix="!")
     }
-
-    return config
 
 
 def conditional_items(conditional_steps):
@@ -254,66 +239,3 @@ def conditional_items(conditional_steps):
                 result.append(step)
 
     return result
-
-
-def source_decode_all(sourcecodes):
-    """Decode a list of source paths, recursively 
-    
-    Parameters
-    ----------
-    sourcecodes: list or string
-        A list of strings of class source (e.g [("sklearn.preprocessing.StandardScaler", {})])
-
-    Returns
-    -------
-
-    """
-    if isinstance(sourcecodes, list):
-        result = []
-        for sourcecode in sourcecodes:
-            result.append(source_decode_all(sourcecode))
-        return result
-
-    if sourcecodes is None:
-        return None
-
-    preprocessor, init_params = sourcecodes
-    return source_decode(preprocessor, init_params)
-
-
-def source_decode(sourcecode, init_params):
-    """Import class from source path.
-    
-    Parameters
-    ----------
-    init_params: dict
-        A dictionary with kwargs to pass to created object
-    sourcecode: string
-        A string of class source (e.g 'sklearn.linear_model.LogisticRegression')
-    Returns
-    -------
-    obj: object
-        Class instance (e.g. LogisticRegression(n_jobs=-1, C=100))
-    """
-    tmp_path = sourcecode.split('.')
-    class_name = tmp_path.pop()
-    import_path = '.'.join(tmp_path)
-    try:
-        # Import class
-        exec('from {} import {}'.format(import_path, class_name))
-
-        # If a key in init_params starts with a !-sign, we'll treat that as a thing that needs to be source-decoded
-        for key in init_params:
-            if key[0] == "!":
-                init_params[key[1:]] = source_decode_all(init_params[key])
-                del (init_params[key])
-
-        # Create class and instantiate with init_params
-        obj = eval(class_name)(**init_params)
-    except TypeError:
-        print(class_name, init_params)
-        raise TypeError
-    except ImportError:
-        print('Warning: {} is not available.'.format(sourcecode))
-        obj = None
-    return obj
