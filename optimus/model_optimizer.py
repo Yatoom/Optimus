@@ -96,6 +96,9 @@ class ModelOptimizer(BaseSearchCV):
         self.Maximizer = Maximizer(param_distribution=self.decoded_grid, timeout_score=self.timeout_score,
                                    use_ei_per_second=use_ei_per_second)
 
+    def __str__(self):
+        return type(self.estimator).__name__
+
     def setup(self):
         # Decode grid
         self.decoded_grid = decoder.decode_params(self.param_distributions, prefix="!", remove_prefixes=True)
@@ -120,9 +123,6 @@ class ModelOptimizer(BaseSearchCV):
         """
         best = np.argmax(self.validated_scores)
         best_setting = self.validated_params[best]
-
-        # Convert best setting values to a key-value dictionary
-        self._say("\n===\nBest parameters:", best_setting)
 
         # Return the estimator with the best parameters
         return Builder.build_pipeline(self.estimator, best_setting)
@@ -227,6 +227,8 @@ class ModelOptimizer(BaseSearchCV):
         self.current_best_time = min(end, self.current_best_time)
         self.current_best_score = max(score, self.current_best_score)
 
+        self._store_results(X, y)
+
         if current_best_score is not None:
             self._say("Score: %s | best: %s | time: %s" % (score, max(current_best_score, score), end))
         else:
@@ -273,7 +275,7 @@ class ModelOptimizer(BaseSearchCV):
         }
         for key, value in self.cv_results_.items():
             if key.startswith("param_"):
-                prefixed["{}__param_{}".format(prefix, key)] = value
+                prefixed["param_{}__{}".format(prefix, key.replace("param_", ""))] = value
 
         return prefixed
 
