@@ -45,7 +45,7 @@ def decode_source(source, **init_params):
     return class_type
 
 
-def decode_sources(sources_with_params, special_prefix="!"):
+def decode_source_tuples(sources_with_params, special_prefix="!"):
     """
     Wrapper around `decode_source()` that accepts (a list of) tuples of kind (source, params).
     
@@ -54,7 +54,7 @@ def decode_sources(sources_with_params, special_prefix="!"):
     special_prefix:
         Prefix for special parameters that need decoding
     sources_with_params: {list, tuple}
-        A tuple or a list of tuples of the shape (str, dict)
+        A tuple, or a list of tuples, of the shape (str, dict)
     Returns
     -------
     The initialized object instance(s)
@@ -64,7 +64,7 @@ def decode_sources(sources_with_params, special_prefix="!"):
     if isinstance(sources_with_params, list):
         result = []
         for source_with_params in sources_with_params:
-            result.append(decode_sources(source_with_params))
+            result.append(decode_source_tuples(source_with_params))
         return result
 
     if isinstance(sources_with_params, tuple):
@@ -104,7 +104,7 @@ def decode_params(params, prefix="!", remove_prefixes=True):
         if key[0:len(prefix)] == prefix:
 
             # Decode value
-            decoded = decode_sources(params_copy[key])
+            decoded = decode_source_tuples(params_copy[key])
 
             # Store decoded value
             if remove_prefixes:

@@ -42,83 +42,83 @@ def generate_config(X, categorical, random_state):
                 ])
             }
         },
-
-        # Random Forests
-        {
-            "estimator": (
-                "sklearn.ensemble.RandomForestClassifier",
-                {"n_jobs": -1, "n_estimators": 512, "random_state": random_state}
-            ),
-            "params": {
-                'criterion': ["gini", "entropy"],
-                'max_features': np.arange(0.05, 0.5, 0.05).tolist(),
-                'max_depth': [8, 9, 10, 11, 12, None],
-                'min_samples_split': list(range(2, 21)),
-                'min_samples_leaf': list(range(1, 21)),
-                'bootstrap': [True, False],
-                '!@preprocessor': conditional_items([
-                    (DI, any_missing, None),
-                    (OHE, not any_missing and any_categorical),
-                    ([DI, OHE], any_missing and any_categorical),
-                    ([DI, PC], any_missing, PC)
-                ])
-            }
-        },
-
-        # Extra-Random Forests
-        {
-            "estimator": (
-                "sklearn.ensemble.ExtraTreesClassifier",
-                {"n_jobs": -1, "n_estimators": 512, "random_state": random_state}
-            ),
-            "params": {
-                'criterion': ["gini", "entropy"],
-                'max_features': np.arange(0.05, 0.5, 0.05).tolist(),
-                'max_depth': [8, 9, 10, 11, 12, None],
-                'min_samples_split': list(range(2, 21)),
-                'min_samples_leaf': list(range(1, 21)),
-                'bootstrap': [True, False],
-                '!@preprocessor': conditional_items([
-                    (DI, any_missing, None),
-                    (OHE, not any_missing and any_categorical),
-                    ([DI, OHE], any_missing and any_categorical),
-                    ([DI, PC], any_missing, PC)
-                ])
-            }
-        },
-
-        # C-Support Vector Machine
-        {
-            "estimator": (
-                "sklearn.svm.SVC",
-                {"probability": True, "random_state": random_state}
-            ),
-            "params": {
-                "C": np.logspace(-10, 10, num=21, base=2).tolist(),
-                "gamma": np.logspace(-10, 0, num=11, base=2).tolist(),
-                "kernel": ["linear", "poly", "rbf"],
-                "!@preprocessor": conditional_items([
-                    (DI, any_missing, None),
-                    ([DI, SS], any_missing, SS)
-                ])
-            }
-        },
-
-        # Gradient Boosting
-        {
-            "estimator": (
-                "sklearn.ensemble.GradientBoostingClassifier",
-                {"n_estimators": 512, "random_state": random_state}
-            ),
-            "params": {
-                "max_depth": [1, 2, 3],
-                "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
-                "!@preprocessor": conditional_items([
-                    (DI, any_missing, None)
-                ])
-            }
-        },
-
+        #
+        # # Random Forests
+        # {
+        #     "estimator": (
+        #         "sklearn.ensemble.RandomForestClassifier",
+        #         {"n_jobs": -1, "n_estimators": 512, "random_state": random_state}
+        #     ),
+        #     "params": {
+        #         'criterion': ["gini", "entropy"],
+        #         'max_features': np.arange(0.05, 0.5, 0.05).tolist(),
+        #         'max_depth': [8, 9, 10, 11, 12, None],
+        #         'min_samples_split': list(range(2, 21)),
+        #         'min_samples_leaf': list(range(1, 21)),
+        #         'bootstrap': [True, False],
+        #         '!@preprocessor': conditional_items([
+        #             (DI, any_missing, None),
+        #             (OHE, not any_missing and any_categorical),
+        #             ([DI, OHE], any_missing and any_categorical),
+        #             ([DI, PC], any_missing, PC)
+        #         ])
+        #     }
+        # },
+        #
+        # # Extra-Random Forests
+        # {
+        #     "estimator": (
+        #         "sklearn.ensemble.ExtraTreesClassifier",
+        #         {"n_jobs": -1, "n_estimators": 512, "random_state": random_state}
+        #     ),
+        #     "params": {
+        #         'criterion': ["gini", "entropy"],
+        #         'max_features': np.arange(0.05, 0.5, 0.05).tolist(),
+        #         'max_depth': [8, 9, 10, 11, 12, None],
+        #         'min_samples_split': list(range(2, 21)),
+        #         'min_samples_leaf': list(range(1, 21)),
+        #         'bootstrap': [True, False],
+        #         '!@preprocessor': conditional_items([
+        #             (DI, any_missing, None),
+        #             (OHE, not any_missing and any_categorical),
+        #             ([DI, OHE], any_missing and any_categorical),
+        #             ([DI, PC], any_missing, PC)
+        #         ])
+        #     }
+        # },
+        #
+        # # C-Support Vector Machine
+        # {
+        #     "estimator": (
+        #         "sklearn.svm.SVC",
+        #         {"probability": True, "random_state": random_state}
+        #     ),
+        #     "params": {
+        #         "C": np.logspace(-10, 10, num=21, base=2).tolist(),
+        #         "gamma": np.logspace(-10, 0, num=11, base=2).tolist(),
+        #         "kernel": ["linear", "poly", "rbf"],
+        #         "!@preprocessor": conditional_items([
+        #             (DI, any_missing, None),
+        #             ([DI, SS], any_missing, SS)
+        #         ])
+        #     }
+        # },
+        #
+        # # Gradient Boosting
+        # {
+        #     "estimator": (
+        #         "sklearn.ensemble.GradientBoostingClassifier",
+        #         {"n_estimators": 512, "random_state": random_state}
+        #     ),
+        #     "params": {
+        #         "max_depth": [1, 2, 3],
+        #         "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
+        #         "!@preprocessor": conditional_items([
+        #             (DI, any_missing, None)
+        #         ])
+        #     }
+        # },
+        #
         # Random Tree
         {
             "estimator": (
@@ -135,64 +135,64 @@ def generate_config(X, categorical, random_state):
                 ])
             }
         },
-
-        # Adaboost
-        {
-            "estimator": (
-                "sklearn.ensemble.AdaBoostClassifier",
-                {"random_state": random_state, "!base_estimator": (
-                    "sklearn.tree.DecisionTreeClassifier",
-                    {}
-                )}
-            ),
-            "params": {
-                "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
-                "algorithm": ["SAMME", "SAMME.R"],
-                "n_estimators": [4, 8, 16, 32, 64, 128, 256, 512],
-                "!@preprocessor": conditional_items([
-                    (DI, any_missing, None)
-                ])
-            }
-        },
-
-        # Multi-layer perceptron
-        {
-            "estimator": (
-                "sklearn.neural_network.MLPClassifier",
-                {"max_iter": 500, "random_state": random_state}
-            ),
-            "params": {
-                "activation": ["relu", "tanh", "logistic"],
-                "solver": ["lbfgs", "adam"],
-                "learning_rate": ['constant', 'adaptive'],
-                "hidden_layer_sizes": [(100,), (100, 100), (100, 100, 100)],
-                "alpha": [1e-05, 1e-04, 1e-03],
-                "!@preprocessor": conditional_items([
-                    (None, not any_missing),
-                    ([DI, SS], any_missing, SS),
-                    ([DI, OHE, SS], any_missing and any_categorical),
-                    ([OHE, SS], not any_missing and any_categorical)
-                ])
-            }
-        },
-
-        # Nu-Support Vector Machine
-        {
-            "estimator": (
-                "sklearn.svm.NuSVC",
-                {"probability": True, "random_state": random_state}
-            ),
-            "params": {
-                "nu": [0.3, 0.4, 0.5],
-                "tol": [0.001, 0.001, 0.01, 0.1],
-                "kernel": ["linear", "poly", "rbf"],
-
-                "!@preprocessor": conditional_items([
-                    (DI, any_missing, None),
-                    ([DI, SS], any_missing, SS)
-                ])
-            },
-        }
+        #
+        # # Adaboost
+        # {
+        #     "estimator": (
+        #         "sklearn.ensemble.AdaBoostClassifier",
+        #         {"random_state": random_state, "!base_estimator": (
+        #             "sklearn.tree.DecisionTreeClassifier",
+        #             {}
+        #         )}
+        #     ),
+        #     "params": {
+        #         "learning_rate": [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1],
+        #         "algorithm": ["SAMME", "SAMME.R"],
+        #         "n_estimators": [4, 8, 16, 32, 64, 128, 256, 512],
+        #         "!@preprocessor": conditional_items([
+        #             (DI, any_missing, None)
+        #         ])
+        #     }
+        # },
+        #
+        # # Multi-layer perceptron
+        # {
+        #     "estimator": (
+        #         "sklearn.neural_network.MLPClassifier",
+        #         {"max_iter": 500, "random_state": random_state}
+        #     ),
+        #     "params": {
+        #         "activation": ["relu", "tanh", "logistic"],
+        #         "solver": ["lbfgs", "adam"],
+        #         "learning_rate": ['constant', 'adaptive'],
+        #         "hidden_layer_sizes": [(100,), (100, 100), (100, 100, 100)],
+        #         "alpha": [1e-05, 1e-04, 1e-03],
+        #         "!@preprocessor": conditional_items([
+        #             (None, not any_missing),
+        #             ([DI, SS], any_missing, SS),
+        #             ([DI, OHE, SS], any_missing and any_categorical),
+        #             ([OHE, SS], not any_missing and any_categorical)
+        #         ])
+        #     }
+        # },
+        #
+        # # Nu-Support Vector Machine
+        # {
+        #     "estimator": (
+        #         "sklearn.svm.NuSVC",
+        #         {"probability": True, "random_state": random_state}
+        #     ),
+        #     "params": {
+        #         "nu": [0.3, 0.4, 0.5],
+        #         "tol": [0.001, 0.001, 0.01, 0.1],
+        #         "kernel": ["linear", "poly", "rbf"],
+        #
+        #         "!@preprocessor": conditional_items([
+        #             (DI, any_missing, None),
+        #             ([DI, SS], any_missing, SS)
+        #         ])
+        #     },
+        # }
     ]
 
 
@@ -208,7 +208,7 @@ def init_model_config(model_configuration):
         return configurations
 
     return {
-        "estimator": decoder.decode_sources(model_config_copy["estimator"], special_prefix="!"),
+        "estimator": decoder.decode_source_tuples(model_config_copy["estimator"], special_prefix="!"),
         "params": decoder.decode_params(model_config_copy["params"], prefix="!")
     }
 

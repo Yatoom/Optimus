@@ -80,21 +80,13 @@ class ModelOptimizer(BaseSearchCV):
         self.timeout_score = timeout_score
         self.use_ei_per_second = use_ei_per_second
 
-        # Initialization of validated values, scores and the current best setting
-        self.validated_params = []
-        self.validated_scores = []
-        self.validated_times = []
-        self.current_best_setting = None
-        self.current_best_score = -np.inf
-        self.current_best_time = np.inf
-        self.best_estimator_ = None
+        # Define placeholders
+        self.validated_params = self.validated_scores = self.validated_times = self.current_best_setting = \
+            self.current_best_score = self.current_best_time = self.best_estimator_ = self.decoded_grid = \
+            self.Maximizer = None
 
-        # Accept either a normal or a to-be source-decoded parameter grid
-        self.decoded_grid = decoder.decode_params(param_distributions, prefix="!", remove_prefixes=True)
-
-        # Setup maximizer
-        self.Maximizer = Maximizer(param_distribution=self.decoded_grid, timeout_score=self.timeout_score,
-                                   use_ei_per_second=use_ei_per_second)
+        # Setup
+        self.setup()
 
     def __str__(self):
         return type(self.estimator).__name__
@@ -104,17 +96,22 @@ class ModelOptimizer(BaseSearchCV):
         self.decoded_grid = decoder.decode_params(self.param_distributions, prefix="!", remove_prefixes=True)
 
         # Initialization of validated values, scores and the current best setting
-        self.validated_params = []
-        self.validated_scores = []
-        self.validated_times = []
-        self.current_best_setting = None
-        self.current_best_score = -np.inf
-        self.current_best_time = np.inf
-        self.best_estimator_ = None
+        self.reset()
 
         # Setup maximizer
         self.Maximizer = Maximizer(param_distribution=self.decoded_grid, timeout_score=self.timeout_score,
                                    use_ei_per_second=self.use_ei_per_second)
+
+    def reset(self):
+        self.validated_times = []
+        self.validated_scores = []
+        self.validated_params = []
+        self.current_best_setting = None
+        self.current_best_score = -np.inf
+        self.current_best_time = np.inf
+        self.best_estimator_ = None
+        self.best_index_ = None
+        self.cv_results_ = None
 
     def get_best(self):
         """
@@ -177,7 +174,7 @@ class ModelOptimizer(BaseSearchCV):
         """
         self._say(
             "Evaluating parameters (timeout: %s s): %s" % (
-            self.max_eval_time, Converter.readable_parameters(parameters)))
+                self.max_eval_time, Converter.readable_parameters(parameters)))
 
         # Initiate success variable
         success = True
@@ -218,6 +215,7 @@ class ModelOptimizer(BaseSearchCV):
             score = [self.timeout_score]
 
         end = time.time() - start if success else self.max_eval_time
+        print(end)
 
         # Get the mean and store the results
         score = np.mean(score)
@@ -227,6 +225,7 @@ class ModelOptimizer(BaseSearchCV):
         self.current_best_time = min(end, self.current_best_time)
         self.current_best_score = max(score, self.current_best_score)
 
+        print("storing results..")
         self._store_results(X, y)
 
         if current_best_score is not None:
@@ -281,8 +280,11 @@ class ModelOptimizer(BaseSearchCV):
 
     def _store_results(self, X, y):
         self.best_estimator_ = self.get_best()
+
+        # Here it goes wrong.
         if self.refit:
             self.best_estimator_.fit(X, y)
+
         self.cv_results_ = {
             "mean_test_score": self.validated_scores,
             "params": self.validated_params

@@ -9,7 +9,23 @@ import pandas as pd
 
 class MultiOptimizer(BaseSearchCV):
     def __init__(self, model_config, scoring="accuracy", n_rounds=50, cv=10, verbose=True, use_ei_per_second=False,
-                 max_eval_time=150, n_prep_rounds="auto", max_retries=3):
+                 max_eval_time=150, n_prep_rounds="auto", max_retries=3, refit=True):
+        """
+        Optimizer for multiple models.
+        
+        Parameters
+        ----------
+        model_config: list
+            A list of model configurations. Each model configuration 
+        scoring
+        n_rounds
+        cv
+        verbose
+        use_ei_per_second
+        max_eval_time
+        n_prep_rounds
+        max_retries
+        """
         """
         Optimizer for multiple models.
         :param models: Dictionary with a 'name': string, an 'estimator': Sklearn Estimator and 'params': dictionary.
@@ -32,10 +48,10 @@ class MultiOptimizer(BaseSearchCV):
         self.max_eval_time = max_eval_time
         self.n_prep_rounds = n_prep_rounds
         self.max_retries = max_retries
+        self.refit = refit
 
-        self.model_optimizers = self.names = self.global_best_score = self.global_best_time = self.results = None
-        self.best_estimator_ = None
-        self.cv_results_ = None
+        self.model_optimizers = self.names = self.global_best_score = self.global_best_time = self.results = \
+            self.best_index_ = self.best_estimator_ = self.cv_results_ = None
         self.setup()
 
     def setup(self):
@@ -48,15 +64,15 @@ class MultiOptimizer(BaseSearchCV):
 
         # Setup optimizers
         for cfg in self.model_config:
-            estimator = decoder.decode_sources(cfg["estimator"], special_prefix="!")
+            estimator = decoder.decode_source_tuples(cfg["estimator"], special_prefix="!")
             params = cfg["params"]
             model_optimizer = ModelOptimizer(estimator, params, n_iter=None, population_size=100, scoring=self.scoring,
                                              cv=self.cv, verbose=self.verbose, use_ei_per_second=self.use_ei_per_second,
-                                             max_eval_time=self.max_eval_time)
+                                             max_eval_time=self.max_eval_time, refit=False)
             self.model_optimizers.append(model_optimizer)
 
     def prepare(self, X, y, n_rounds="auto", max_retries=3):
-        self._say("Preparing all models for %s rounds" % n_rounds, "-")
+        self._say("Preparing all models for %s rounds" % n_rounds, "=", "=")
 
         # Keep a list of indices of model optimizers that could not successfully evaluate their parameters, so that we
         # can remove them later.
@@ -66,7 +82,7 @@ class MultiOptimizer(BaseSearchCV):
 
             num_params = len(optimizer.param_distributions)
             num_prep_rounds = n_rounds if n_rounds != "auto" else num_params
-            self._say("Preparing {} optimizer with {} rounds".format(optimizer, num_prep_rounds))
+            self._say("Preparing {} optimizer with {} rounds".format(optimizer, num_prep_rounds), separator="")
 
             for iteration in range(0, num_prep_rounds):
                 self._say("Iteration {}/{}".format(iteration + 1, num_prep_rounds), "-", "-")
@@ -96,7 +112,7 @@ class MultiOptimizer(BaseSearchCV):
         self._store_results(X, y)
 
     def optimize(self, X, y, n_rounds):
-        self._say("Optimizing for {} rounds.".format(n_rounds), "-")
+        self._say("Optimizing for {} rounds.".format(n_rounds), "=", "=")
 
         for i in range(0, n_rounds):
             best_optimizer, best_parameters, best_score = self._get_best_ei()
@@ -114,6 +130,7 @@ class MultiOptimizer(BaseSearchCV):
         self._store_results(X, y)
 
     def fit(self, X, y):
+        self.reset()
         self.prepare(X, y, n_rounds=self.n_prep_rounds, max_retries=self.max_retries)
         self.optimize(X, y, n_rounds=self.n_rounds)
         return self
@@ -144,12 +161,12 @@ class MultiOptimizer(BaseSearchCV):
             results.append(pd.DataFrame(optimizer.get_results(prefix=optimizer)))
 
         # Merge results together
-        merged = pd.concat(results, axis=0, ignore_index=True)
+        merged = pd.concat(results, axis=0, ignore_index=True)  # type: pd.DataFrame
         merged = merged.fillna("N/A")
 
         # Store results
         self.best_index_ = np.argmax(merged["mean_test_score"])
-        self.cv_results_ = merged.to_dict()
+        self.cv_results_ = merged.to_dict(orient='list')
 
     def _get_best_ei(self):
         """
@@ -179,16 +196,15 @@ class MultiOptimizer(BaseSearchCV):
 
         return best_optimizer, best_parameters, best_score
 
-    def _reset(self):
+    def reset(self):
         self.global_best_score = -np.inf
         self.global_best_time = np.inf
+        self.best_estimator_ = None
+        # self.cv_results_ = None
+        self.best_index_ = None
+
         for optimizer in self.model_optimizers:
-            optimizer.validated_params = []
-            optimizer.validated_scores = []
-            optimizer.validated_times = []
-            optimizer.current_best_setting = None
-            optimizer.current_best_score = -np.inf
-            optimizer.current_best_time = np.inf
+            optimizer.reset()
 
     def get_params(self, deep=True):
         return {
