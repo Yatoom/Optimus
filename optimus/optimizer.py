@@ -42,14 +42,17 @@ class Optimizer:
         timeout_score: {int, float}
             The score value to insert in case of timeout
             
-        max_eval_time: 
+        max_eval_time: int
             Maximum time for evaluation
             
         use_ei_per_second: bool
             Whether to use the standard EI or the EI / sqrt(second)
             
-        verbose
-        draw_samples
+        verbose: bool
+            Whether to print extra information
+            
+        draw_samples: int
+            Number of randomly selected samples we maximize over 
         """
 
         # Accept parameters
@@ -96,7 +99,11 @@ class Optimizer:
         
         Returns
         -------
-        Returns a dict of the best parameters.
+        best_setting: dict
+            The setting with the highest expected improvement
+        
+        best_score: float
+            The highest EI (per second)
         """
 
         # Select a sample of parameters
@@ -105,7 +112,7 @@ class Optimizer:
         # Determine the best parameters
         return self._maximize_on_sample(sampled_params)
 
-    def evaluate(self, parameters, X, y, current_best_score=None):
+    def evaluate(self, parameters, X, y):
         """
         Evaluates a parameter setting and updates the list of validated parameters afterward.
         
@@ -119,13 +126,17 @@ class Optimizer:
             
         y: array-like, shape = [n_samples] or [n_samples, n_outputs]
             The target values (class labels) as integers or strings
-            
-        current_best_score: float or None
-            The current best score, only used for printing
-            
+                       
         Returns
         -------
-        A boolean specifying whether or not the evaluation was successful (i.e. finished in time)
+        success: bool
+            Whether or not the evaluation was successful (i.e. finished in time)
+        
+        score: float
+            The resulting score (equals timeout_score if evaluation was not successful)
+            
+        running_time: float
+            The running time in seconds (equals max_eval_time if evaluation was not successful)        
         """
 
         say("Evaluating parameters (timeout: %s s): %s" % (
@@ -154,7 +165,7 @@ class Optimizer:
             if "n_jobs" in self.estimator.get_params() and self.estimator.get_params()["n_jobs"] != 1:
                 say("Runtime error, trying again with n_jobs=1.")
                 self.estimator.set_params(n_jobs=1)
-                return self.evaluate(parameters, X, y, current_best_score)
+                return self.evaluate(parameters, X, y)
 
             # Otherwise, we're going to catch the error as we normally do
             else:
@@ -169,23 +180,20 @@ class Optimizer:
             success = False
             score = [self.timeout_score]
 
-        end = time.time() - start if success else self.max_eval_time
+        running_time = time.time() - start if success else self.max_eval_time
 
         # Get the mean and store the results
         score = np.mean(score)  # type: float
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
         self.converted_params = Converter.convert_settings(self.validated_params, self.param_distributions)
-        self.validated_times.append(end)
-        self.current_best_time = min(end, self.current_best_time)
+        self.validated_times.append(running_time)
+        self.current_best_time = min(running_time, self.current_best_time)
         self.current_best_score = max(score, self.current_best_score)
 
-        if current_best_score is not None:
-            say("Score: %s | best: %s | time: %s" % (score, max(current_best_score, score), end))
-        else:
-            say("Score: %s | time: %s" % (score, end))
+        say("Score: %s | best: %s | time: %s" % (score, self.current_best_score, running_time))
 
-        return success
+        return success, score, running_time
 
     def _maximize_on_sample(self, sampled_params):
         """
@@ -198,8 +206,11 @@ class Optimizer:
 
         Returns
         -------
-        Returns the sample with the highest expected improvement
-
+        best_setting: dict
+            The setting with the highest expected improvement
+        
+        best_score: float
+            The highest EI (per second)
         """
 
         # A little trick to count the number of validated scores that are not equal to the timeout_score value
