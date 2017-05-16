@@ -2,13 +2,14 @@ from sklearn.model_selection import cross_val_score, ParameterSampler
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
 from optimus.converter import Converter
-from scipy.stats import norm, warnings
 from optimus.builder import Builder
 from extra.timeout import Timeout
 from extra.fancyprint import say
+from scipy.stats import norm
 from sklearn import clone
 import numpy as np
 import traceback
+import warnings
 import time
 
 warnings.filterwarnings("ignore")
@@ -93,10 +94,14 @@ class Optimizer:
         # Returns the name of the estimator (e.g. LogisticRegression)
         return type(self.estimator).__name__
 
-    def maximize(self):
+    def maximize(self, score_optimum=None):
         """
-        Find the best setting - the setting with the highest expected improvement - to evaluate.
         
+        Parameters
+        ----------
+        score_optimum: float
+            An optional score to use inside the EI formula instead of the optimizer's current_best_score
+
         Returns
         -------
         best_setting: dict
@@ -109,8 +114,13 @@ class Optimizer:
         # Select a sample of parameters
         sampled_params = ParameterSampler(self.param_distributions, self.draw_samples)
 
+        # Set score optimum
+        if score_optimum is None:
+            score_optimum = self.current_best_score
+
         # Determine the best parameters
-        return self._maximize_on_sample(sampled_params)
+        best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
+        return best_setting, best_score
 
     def evaluate(self, parameters, X, y):
         """
@@ -118,7 +128,7 @@ class Optimizer:
         
         Parameters
         ----------
-        parameters: list
+        parameters: dict
             The parameter settings to evaluate
             
         X: array-like or sparse matrix, shape = [n_samples, n_features]
@@ -138,9 +148,8 @@ class Optimizer:
         running_time: float
             The running time in seconds (equals max_eval_time if evaluation was not successful)        
         """
-
         say("Evaluating parameters (timeout: %s s): %s" % (
-            self.max_eval_time, Converter.readable_parameters(parameters)))
+            self.max_eval_time, Converter.readable_parameters(parameters)), self.verbose)
 
         # Initiate success variable
         success = True
@@ -153,29 +162,29 @@ class Optimizer:
 
             # Evaluate with timeout
             with Timeout(self.max_eval_time):
-                score = cross_val_score(best_estimator, X, y, scoring=self.scoring, cv=self.inner_cv, n_jobs=-1)
+                score = cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv, n_jobs=-1)
 
         except (GeneratorExit, OSError, TimeoutError):
-            say("Timeout error :(")
+            say("Timeout error :(", self.verbose)
             success = False
             score = [self.timeout_score]
         except RuntimeError:
             # It might be that it still works when we set n_jobs to 1 instead of -1.
             # Below we check if we can set n_jobs to 1 and if so, recall this function again.
             if "n_jobs" in self.estimator.get_params() and self.estimator.get_params()["n_jobs"] != 1:
-                say("Runtime error, trying again with n_jobs=1.")
+                say("Runtime error, trying again with n_jobs=1.", self.verbose)
                 self.estimator.set_params(n_jobs=1)
                 return self.evaluate(parameters, X, y)
 
             # Otherwise, we're going to catch the error as we normally do
             else:
-                say("RuntimeError")
+                say("RuntimeError", self.verbose)
                 print(traceback.format_exc())
                 success = False
                 score = [self.timeout_score]
 
         except Exception:
-            say("An error occurred with parameters", Converter.readable_parameters(parameters))
+            say("An error occurred with parameters {}".format(Converter.readable_parameters(parameters)), self.verbose)
             print(traceback.format_exc())
             success = False
             score = [self.timeout_score]
@@ -191,11 +200,11 @@ class Optimizer:
         self.current_best_time = min(running_time, self.current_best_time)
         self.current_best_score = max(score, self.current_best_score)
 
-        say("Score: %s | best: %s | time: %s" % (score, self.current_best_score, running_time))
+        say("Score: %s | best: %s | time: %s" % (score, self.current_best_score, running_time), self.verbose)
 
         return success, score, running_time
 
-    def _maximize_on_sample(self, sampled_params):
+    def _maximize_on_sample(self, sampled_params, score_optimum):
         """
         Finds the next best setting to evaluate from a set of samples. 
         
@@ -203,6 +212,9 @@ class Optimizer:
         ----------
         sampled_params: list
             The samples to calculate the expected improvement on
+            
+        score_optimum: float
+            The score optimum value to pass to the EI formula
 
         Returns
         -------
@@ -233,15 +245,15 @@ class Optimizer:
         best_setting = None
         for setting in sampled_params:
             converted_setting = Converter.convert_setting(setting, self.param_distributions)
-            score = self._get_ei_per_second(converted_setting, self.current_best_score)
-            # print("Score: %s| Setting: %s " % (score, Converter.readable_parameters(setting)))
+            score = self._get_ei_per_second(converted_setting, score_optimum)
+
             if score > best_score:
                 best_score = score
                 best_setting = setting
 
-        return best_setting, self._realize(best_setting, best_score)
+        return best_setting, self._realize(best_setting, best_score, score_optimum)
 
-    def _realize(self, best_setting, original):
+    def _realize(self, best_setting, original, score_optimum):
         """
         Calculate a more realistic estimate of the expected improvement by removing validations that resulted in a 
         timeout. These timeout scores are useful to direct the Gaussian Process away, but if we need a realistic 
@@ -254,6 +266,9 @@ class Optimizer:
             
         original: float
             The original estimate, which will be returned in case we can not calculate the realistic estimate
+            
+        score_optimum: float
+            The score optimum value to pass to the EI formula
 
         Returns
         -------
@@ -274,9 +289,9 @@ class Optimizer:
 
         setting = Converter.convert_setting(best_setting, self.param_distributions)
 
-        return self._get_ei_per_second(setting, self.current_best_score)
+        return self._get_ei_per_second(setting, score_optimum)
 
-    def _get_ei_per_second(self, point, current_best_score):
+    def _get_ei_per_second(self, point, score_optimum):
         """
         Calculate the expected improvement and divide it by the square root of the estimated validation time.
         
@@ -285,22 +300,22 @@ class Optimizer:
         point:
             Setting to predict on
             
-        current_best_score:
-            The current score optimum
+        score_optimum: float
+            The score optimum value to use inside the EI formula
             
         Returns
         -------
         Return the EI / sqrt(estimated seconds) or the EI, depending on the use_ei_per_second value
         """
 
-        ei = self._get_ei(point, current_best_score)
+        ei = self._get_ei(point, score_optimum)
 
         if self.use_ei_per_second:
             seconds = self.gp_time.predict(point)
             return ei / np.sqrt(seconds)
         return ei
 
-    def _get_ei(self, point, current_best_score):
+    def _get_ei(self, point, score_optimum):
         """
         Calculate the expected improvement.
         
@@ -308,8 +323,10 @@ class Optimizer:
         ----------
         point: list
             Parameter setting for the GP to predict on
-        current_best_score: float
-            The current score optimum
+            
+        score_optimum: float
+            The score optimum value to use for calculating the difference against the expected value
+        
         Returns
         -------
         Returns the Expected Improvement
@@ -321,7 +338,6 @@ class Optimizer:
 
         point = np.array(point).reshape(1, -1)
         mu, sigma = self.gp_score.predict(point, return_std=True)
-        best_score = current_best_score
         mu = mu[0]
         sigma = sigma[0]
 
@@ -329,7 +345,7 @@ class Optimizer:
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
         # (2.3.2 Exploration-exploitation trade-of)
         # Intuition: makes diff less important, while sigma becomes more important
-        diff = mu - best_score  # - 0.01
+        diff = mu - score_optimum  # - 0.01
 
         # If sigma is zero, this means we have already seen that point, so we do not need to evaluate it again.
         # We use a value slightly higher than 0 in case of small machine rounding errors.
