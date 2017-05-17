@@ -1,5 +1,6 @@
 from optimus.builder import Builder
 from sklearn.model_selection._search import BaseSearchCV
+from optimus.converter import Converter
 from optimus.optimizer import Optimizer
 from extra.fancyprint import say
 from vault import decoder
@@ -7,8 +8,52 @@ import numpy as np
 
 
 class ModelOptimizer(BaseSearchCV):
-    def __init__(self, estimator, encoded_params, inner_cv=10, scoring="accuracy", timeout_score=0, max_eval_time=120,
-                 use_ei_per_second=False, verbose=True, draw_samples=100, n_iter=10, refit=True):
+    def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
+                 max_eval_time=120, use_ei_per_second=False, verbose=True, draw_samples=100, n_iter=10, refit=True):
+        """
+        An optimizer using Gaussian Processes for optimizing a single model. 
+        
+        Parameters
+        ----------
+        estimator: estimator object
+            An object of that type is instantiated for each grid point. This is assumed to implement the scikit-learn 
+            estimator interface. Either estimator needs to provide a `score` function, or `scoring` must be passed.
+            
+        encoded_params: dict
+            A dictionary of parameter distributions for the estimator. An extra key `@preprocessor` can be added to try 
+            out different preprocessors. The values of parameters that start with a "!" will be source decoded, and 
+            stored under a new key without the prefix.  
+            
+        n_iter: {int, list}
+            Number of parameter settings that are drawn using bayesian optimization, when fitting.
+            
+        draw_samples: int
+            The number of samples to randomly draw from the hyper parameter, to use for finding the next best point.
+            
+        scoring : string, callable or None, default=None
+            A string (see model evaluation documentation) or a scorer callable object / function with signature
+            `scorer(estimator, X, y)`. If `None`, the `score` method of the estimator is used.
+            
+        inner_cv: int, cross-validation generator or an iterable, optional
+            A scikit-learn compatible cross-validation object
+            
+        verbose: bool
+            Whether or not to print information to the console
+            
+        timeout_score: int or float
+            The score value to insert in case of timeout
+             
+        use_ei_per_second: bool
+            Whether to use the standard EI or the EI / sqrt(second)
+            
+        max_eval_time: int or float
+            Maximum time for evaluation
+            
+        refit: boolean, default=True
+            Refit the best estimator with the entire dataset. If "False", it is impossible to make predictions using
+            the estimator instance after fitting
+        """
+
         # Call to super
         super().__init__(None, None, None)
 
@@ -32,10 +77,10 @@ class ModelOptimizer(BaseSearchCV):
         self.decoded_params = None
         self.optimizer = None
 
+    def fit(self, X, y):
+
         # Calculate derived variables
         self._setup()
-
-    def fit(self, X, y):
 
         say("Bayesian search with %s iterations" % self.n_iter, self.verbose, style="title")
 
@@ -44,7 +89,7 @@ class ModelOptimizer(BaseSearchCV):
             say("Iteration {}/{}. EI: {}".format(i + 1, self.n_iter, ei), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
 
-        self.cv_results_, self.best_index_, self.best_estimator_ = self._create_cv_results()
+        self.cv_results_, self.best_index_, self.best_estimator_ = self.optimizer.create_cv_results()
 
         # Refit the best estimator on the whole dataset
         if self.refit:
@@ -61,7 +106,6 @@ class ModelOptimizer(BaseSearchCV):
     def set_params(self, **parameters):
         for parameter, value in parameters.items():
             self.__setattr__(parameter, value)
-        self._setup()
         return self
 
     def get_params(self, deep=True):
@@ -113,42 +157,3 @@ class ModelOptimizer(BaseSearchCV):
                                    scoring=self.scoring, timeout_score=self.timeout_score,
                                    max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples)
-
-    def _create_cv_results(self):
-        """
-        Create a slim version of Sklearn's cv_results_ parameter that includes the keywords "params", "param_*" and 
-        "mean_test_score", calculate the best index, and construct the best estimator.
-        
-        Returns
-        -------
-        cv_results : dict of lists
-            A table of cross-validation results
-        
-        best_index: int
-            The index of the best parameter setting
-            
-        best_estimator: sklearn estimator
-            The estimator initialized with the best parameters
-      
-        """
-
-        # Insert "params" and "mean_test_score" keywords
-        cv_results = {
-            "params": self.optimizer.validated_params,
-            "mean_test_score": self.optimizer.validated_scores,
-        }
-
-        # Insert "param_*" keywords
-        for setting in cv_results["params"]:
-            for key, item in setting.items():
-                param = "param_{}".format(key)
-                if param not in cv_results:
-                    cv_results[param] = []
-                cv_results[param].append(item)
-
-        # Find best index
-        best_index = np.argmax(self.optimizer.validated_scores)
-        best_setting = self.optimizer.validated_params[best_index]
-        best_estimator = Builder.build_pipeline(self.estimator, best_setting)
-
-        return cv_results, best_index, best_estimator

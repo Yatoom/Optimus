@@ -30,8 +30,7 @@ class Optimizer:
             
         param_distributions: dict
             A dictionary of parameter distributions for the estimator. An extra key `@preprocessor` can be added to try 
-            out different preprocessors. The values of parameters that start with a "!" will be source decoded, and 
-            stored under a new key without the prefix.  
+            out different preprocessors.
         
         inner_cv: int, cross-validation generator or an iterable, optional
             A scikit-learn compatible cross-validation object that will be used for the inner cross-validation
@@ -203,6 +202,53 @@ class Optimizer:
         say("Score: %s | best: %s | time: %s" % (score, self.current_best_score, running_time), self.verbose)
 
         return success, score, running_time
+
+    def create_cv_results(self):
+        """
+        Create a slim version of Sklearn's cv_results_ parameter that includes the keywords "params", "param_*" and 
+        "mean_test_score", calculate the best index, and construct the best estimator.
+
+        Returns
+        -------
+        cv_results : dict of lists
+            A table of cross-validation results
+
+        best_index: int
+            The index of the best parameter setting
+
+        best_estimator: sklearn estimator
+            The estimator initialized with the best parameters
+
+        """
+
+        # Insert "params" and "mean_test_score" keywords
+        cv_results = {
+            "params": self.validated_params,
+            "mean_test_score": self.validated_scores,
+        }
+
+        # Insert "param_*" keywords
+        for setting in cv_results["params"]:
+            for key, item in setting.items():
+                param = "param_{}".format(key)
+
+                # Create keyword if it does not exist
+                if param not in cv_results:
+                    cv_results[param] = []
+
+                # Use cleaner names
+                # TODO: make this reproducible from OpenML
+                value = Converter.make_readable(item)
+
+                # Add value to results
+                cv_results[param].append(value)
+
+        # Find best index
+        best_index = np.argmax(self.validated_scores)  # type: int
+        best_setting = self.validated_params[best_index]
+        best_estimator = Builder.build_pipeline(self.estimator, best_setting)
+
+        return cv_results, best_index, best_estimator
 
     def _maximize_on_sample(self, sampled_params, score_optimum):
         """

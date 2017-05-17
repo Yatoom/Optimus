@@ -86,10 +86,13 @@ def decode_params(params, prefix="!", remove_prefixes=True):
     ----------
     params: dict
         A dictionary of parameters
+        
     prefix: str
         A prefix that indicates the parameter is special and requires decoding
+        
     remove_prefixes: bool
         Indicates if prefixes should be removed from keys
+        
     Returns
     -------
     Returns the new parameters where the key prefixes are removed and its values are decoded  
