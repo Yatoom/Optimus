@@ -31,24 +31,32 @@ class MultiOptimizer(BaseSearchCV):
         self.refit = refit
         self.timeout_score = timeout_score
         self.draw_samples = draw_samples
+        self.cv_results_ = None
+        self.best_index_ = None
+        self.best_estimator_ = None
 
     def fit(self, X, y):
         self._setup()
         self._prepare(X, y, n_rounds=self.n_prep_rounds, max_retries=self.max_retries)
         self._optimize(X, y, n_rounds=self.n_rounds)
 
+        self.cv_results_, self.best_index_, self.best_estimator_ = self._create_cv_results()
+
+        if self.refit:
+            self.best_estimator_.fit(X, y)
+
     def predict(self, X):
-        self.best_estimator_.predict()
+        return self.best_estimator_.predict(X)
 
     def predict_proba(self, X):
-        self.best_estimator_.predict_proba()
+        return self.best_estimator_.predict_proba(X)
 
-    def get_params(self):
+    def get_params(self, deep=True):
         return {
-            "model_config": self.encoded_model_config,
+            "encoded_model_config": self.encoded_model_config,
             "scoring": self.scoring,
             "n_rounds": self.n_rounds,
-            "cv": self.cv,
+            "inner_cv": self.inner_cv,
             "verbose": self.verbose,
             "use_ei_per_second": self.use_ei_per_second,
             "max_eval_time": self.max_eval_time,
@@ -69,8 +77,11 @@ class MultiOptimizer(BaseSearchCV):
         self.global_best_score = -np.inf
         self.global_best_time = np.inf
         self.results = {
-            "param_model": [],
-            "param_setting": []
+            "optimizer": [],
+            "model_readable": [],
+            "setting": [],
+            "setting_readable": [],
+            "score": []
         }
 
         # Setup optimizers
@@ -138,8 +149,6 @@ class MultiOptimizer(BaseSearchCV):
 
             self.global_best_score = max(self.global_best_score, score)
 
-        self.cv_results_, self.best_index_, self.best_estimator_ = self._create_cv_results()
-
     def _maximize(self):
         """
         Find optimizer with highest expected improvement.
@@ -170,8 +179,10 @@ class MultiOptimizer(BaseSearchCV):
         return best_ei, best_setting, best_optimizer
 
     def _store_trace(self, optimizer, setting, score):
-        self.results["model"].append(str(optimizer))
-        self.results["setting"].append(Converter.make_readable(setting))
+        self.results["optimizer"].append(optimizer)
+        self.results["model_readable"].append(str(optimizer))
+        self.results["setting"].append(setting)
+        self.results["setting_readable"].append(Converter.readable_parameters(setting))
         self.results["score"].append(score)
 
     def _create_cv_results(self):
@@ -195,13 +206,14 @@ class MultiOptimizer(BaseSearchCV):
 
         cv_results = {
             "mean_test_score": self.results["score"],
-            "param_model": self.results["model"],
             "params": self.results["setting"],
-            "param_setting": self.results["setting"]
+            "param_model": self.results["model_readable"],
+            "param_setting": self.results["setting_readable"]
         }
 
         best_index = np.argmax(self.results["score"])  # type: int
-        best_setting = self.results["params"][best_index]
-        best_estimator = Builder.build_pipeline(self.estimator, best_setting)
+        best_setting = self.results["setting"][best_index]
+        best_optimizer = self.results["optimizer"][best_index]  # type: Optimizer
+        best_estimator = Builder.build_pipeline(best_optimizer.estimator, best_setting)
 
         return cv_results, best_index, best_estimator

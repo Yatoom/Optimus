@@ -64,7 +64,7 @@ class Optimizer:
         self.max_eval_time = max_eval_time
         self.use_ei_per_second = use_ei_per_second
         self.verbose = verbose
-        self.draw_samples = draw_samples
+        self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
 
         # Setup initial values
         self.validated_scores = []
@@ -249,6 +249,18 @@ class Optimizer:
         best_estimator = Builder.build_pipeline(self.estimator, best_setting)
 
         return cv_results, best_index, best_estimator
+
+    @staticmethod
+    def get_grid_size(param_grid):
+        """
+        Calculates the grid size (i.e. the number of possible combinations).
+        :param param_grid: A dictionary of parameters and their lists of values
+        :return: Integer size of the grid
+        """
+        result = 1
+        for i in param_grid.values():
+            result *= len(i)
+        return result
 
     def _maximize_on_sample(self, sampled_params, score_optimum):
         """
