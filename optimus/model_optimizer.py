@@ -1,10 +1,7 @@
-from optimus.builder import Builder
 from sklearn.model_selection._search import BaseSearchCV
-from optimus.converter import Converter
 from optimus.optimizer import Optimizer
 from extra.fancyprint import say
 from vault import decoder
-import numpy as np
 
 
 class ModelOptimizer(BaseSearchCV):
@@ -30,7 +27,7 @@ class ModelOptimizer(BaseSearchCV):
         draw_samples: int
             The number of samples to randomly draw from the hyper parameter, to use for finding the next best point.
             
-        scoring : string, callable or None, default=None
+        scoring: string, callable or None, default=None
             A string (see model evaluation documentation) or a scorer callable object / function with signature
             `scorer(estimator, X, y)`. If `None`, the `score` method of the estimator is used.
             
@@ -47,7 +44,7 @@ class ModelOptimizer(BaseSearchCV):
             Whether to use the standard EI or the EI / sqrt(second)
             
         max_eval_time: int or float
-            Maximum time for evaluation
+            Time in seconds until evaluation times out
             
         refit: boolean, default=True
             Refit the best estimator with the entire dataset. If "False", it is impossible to make predictions using
@@ -78,6 +75,18 @@ class ModelOptimizer(BaseSearchCV):
         self.optimizer = None
 
     def fit(self, X, y):
+        """
+        Optimize the model for `n_rounds`.
+
+        Parameters
+        ----------
+        X: array-like or sparse matrix of shape = [n_samples, n_features]
+            The input samples.
+
+        y: array of shape = [n_samples] or [n_samples, n_outputs]
+            The target values (class labels) as integers or strings.
+
+        """
 
         # Calculate derived variables
         self._setup()

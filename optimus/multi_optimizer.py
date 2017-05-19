@@ -1,19 +1,66 @@
-import warnings
-
 from sklearn.model_selection._search import BaseSearchCV
-
-from extra.fancyprint import say
-from optimus.builder import Builder
-from optimus.converter import Converter
 from optimus.optimizer import Optimizer
+from optimus.converter import Converter
+from optimus.builder import Builder
+from extra.fancyprint import say
 from vault import decoder
 import numpy as np
+import warnings
 
 
 class MultiOptimizer(BaseSearchCV):
     def __init__(self, encoded_model_config, scoring="accuracy", n_rounds=50, inner_cv=None, verbose=True,
                  use_ei_per_second=False, max_eval_time=150, n_prep_rounds="auto", max_retries=3, refit=True,
                  timeout_score=0, draw_samples=100):
+        """
+        An optimizer using Gaussian Processes for optimizing over multiple models and parameter settings. 
+
+        
+        Parameters
+        ----------
+        encoded_model_config: dict with keys `estimator` and `params`
+            The `estimator` value is a tuple with 1) the source string of an estimator; and 2) the parameters to 
+            initialize the estimator with. The `params` value is a dictionary of parameter distributions for the 
+            estimator. An extra key `@preprocessor` can be added to try out different preprocessors. The values of 
+            parameters that start with a "!" will be source decoded, and stored under a new key without the prefix.  
+            
+        scoring: string, callable or None, default=None
+            A string (see model evaluation documentation) or a scorer callable object / function with signature
+            `scorer(estimator, X, y)`. If `None`, the `score` method of the estimator is used.
+        
+        n_rounds: int
+            Number of iterations for the optimization step
+        
+        inner_cv: int, cross-validation generator or an iterable, optional
+            A scikit-learn compatible cross-validation object
+        
+        verbose: bool
+            Whether or not to print information to the console
+        
+        use_ei_per_second: bool
+            Whether to use the standard EI or the EI / sqrt(second)
+            
+        max_eval_time: int or float
+            Time in seconds until evaluation times out
+        
+        n_prep_rounds: int
+            Number of iterations for each optimizer in the preparation step
+        
+        max_retries: int
+            In case we run into timeouts, how many retries we allow the optimizer to find a setting without a timeout 
+            until we remove the optimizer from the list
+        
+        refit: boolean, default=True
+            Refit the best estimator with the entire dataset. If "False", it is impossible to make predictions using
+            the estimator instance after fitting
+            
+        timeout_score: int or float
+            The score value to insert in case of timeout
+            
+        draw_samples: int
+            The number of samples to randomly draw from the hyper parameter, to use for finding the next best point.
+            
+        """
 
         # Dummy call to super
         super().__init__(None, None, None, None)
@@ -35,6 +82,19 @@ class MultiOptimizer(BaseSearchCV):
         self.best_estimator_ = None
 
     def fit(self, X, y):
+        """
+        Prepare each optimizer for `n_prep_rounds` and then optimize over all optimizers for `n_rounds`.
+
+        Parameters
+        ----------
+        X: array-like or sparse matrix of shape = [n_samples, n_features]
+            The input samples.
+
+        y: array of shape = [n_samples] or [n_samples, n_outputs]
+            The target values (class labels) as integers or strings.
+            
+        """
+
         say("Running MultiOptimizer", self.verbose, style="header")
         self._setup()
         self._prepare(X, y, n_rounds=self.n_prep_rounds, max_retries=self.max_retries)
@@ -76,13 +136,7 @@ class MultiOptimizer(BaseSearchCV):
         self.names = []
         self.global_best_score = -np.inf
         self.global_best_time = np.inf
-        self.results = {
-            "optimizer": [],
-            "model_readable": [],
-            "setting": [],
-            "setting_readable": [],
-            "score": []
-        }
+        self.results = {}
 
         # Setup optimizers
         for cfg in self.encoded_model_config:
@@ -95,6 +149,25 @@ class MultiOptimizer(BaseSearchCV):
             self.optimizers.append(optimizer)
 
     def _prepare(self, X, y, n_rounds="auto", max_retries=3):
+        """
+        Loop over all optimizers and let each optimizer evaluate a few settings, starting with a random point, but 
+        
+        Parameters
+        ----------
+        X: array-like or sparse matrix of shape = [n_samples, n_features]
+            The input samples.
+            
+        y: array of shape = [n_samples] or [n_samples, n_outputs]
+            The target values (class labels) as integers or strings.
+            
+        n_rounds: int
+            The number of optimization iterations
+            
+        max_retries: int
+            In case we run into timeouts, how many retries we allow the optimizer to find a setting without a timeout 
+            until we remove the optimizer from the list
+
+        """
 
         # Keep a list of indices of model optimizers that could not successfully evaluate their parameters, so that we
         # can remove them later.
@@ -132,6 +205,23 @@ class MultiOptimizer(BaseSearchCV):
         self.optimizers = [i for j, i in enumerate(self.optimizers) if j not in to_remove]
 
     def _optimize(self, X, y, n_rounds):
+        """
+        A loop that, in each iteration, compares the highest expected improvement of each optimizer and lets the best 
+        optimizer evaluate its setting.
+        
+        Parameters
+        ----------
+        X: array-like or sparse matrix of shape = [n_samples, n_features]
+            The input samples.
+            
+        y: array of shape = [n_samples] or [n_samples, n_outputs]
+            The target values (class labels) as integers or strings.
+            
+        n_rounds: int
+            The number of optimization iterations
+            
+        """
+
         say("Optimizing for {} rounds".format(n_rounds), self.verbose, style="title")
 
         for i in range(0, n_rounds):
@@ -162,7 +252,9 @@ class MultiOptimizer(BaseSearchCV):
             
         best_optimizer: Optimizer
             The optimizer with the highest expected improvement
+            
         """
+
         best_ei = -np.inf
         best_setting = None
         best_optimizer = None
@@ -178,11 +270,27 @@ class MultiOptimizer(BaseSearchCV):
         return best_ei, best_setting, best_optimizer
 
     def _store_trace(self, optimizer, setting, score):
-        self.results["optimizer"].append(optimizer)
-        self.results["model_readable"].append(str(optimizer))
-        self.results["setting"].append(setting)
-        self.results["setting_readable"].append(Converter.readable_parameters(setting))
-        self.results["score"].append(score)
+        """
+        Store the optimizer, setting and score, as well as the estimator name and a readable version of the setting.
+        
+        Parameters
+        ----------
+        optimizer: Optimizer
+            The optimizer used in this round
+            
+        setting: dict
+            The setting used by the optimizer
+        
+        score: float
+            The score found by evaluating the setting
+            
+        """
+
+        self.results.setdefault("optimizer", []).append(optimizer)
+        self.results.setdefault("model_readable", []).append(str(optimizer))
+        self.results.setdefault("setting", []).append(setting)
+        self.results.setdefault("setting_readable", []).append(Converter.readable_parameters(setting))
+        self.results.setdefault("score", []).append(score)
 
     def _create_cv_results(self):
         """
