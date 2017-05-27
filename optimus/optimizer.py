@@ -121,6 +121,41 @@ class Optimizer:
         best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
         return best_setting, best_score
 
+    def randomize(self, calculate_ei=False, score_optimum=None):
+        """
+        Get a random setting from the distribution.
+        
+        Parameters
+        ----------
+        calculate_ei: bool
+            Calculate and return expected improvement of sample
+        
+        score_optimum: float
+            The score optimum to pass to the EI formula, only needed when "calculate_ei=True"
+
+        Returns
+        -------
+        random_setting: dict
+            A random setting
+            
+        expected_improvement: float
+            Expected improvement, only returned when "calculate_ei=True"
+
+        """
+        if self.random_params is None:
+            self.random_params = ParameterSampler(self.param_distributions, self.draw_samples)
+            self.random_params_pointer = 0
+
+        if not calculate_ei:
+            return self.random_params
+
+        if score_optimum is None:
+            score_optimum = self.current_best_score
+
+        expected_improvement = self._realize(random_setting, 0, score_optimum)
+
+        return random_setting, expected_improvement
+
     def evaluate(self, parameters, X, y):
         """
         Evaluates a parameter setting and updates the list of validated parameters afterward.
@@ -392,7 +427,7 @@ class Optimizer:
 
         # Extra check. This way seems to work around rounding errors, and it can be computed surprisingly fast.
         if point in self.gp_score.X_train_.tolist():
-            return 0
+            return -1
 
         point = np.array(point).reshape(1, -1)
         mu, sigma = self.gp_score.predict(point, return_std=True)
