@@ -1,4 +1,5 @@
-from sklearn.model_selection._search import BaseSearchCV
+from sklearn.metrics.scorer import check_scoring
+from sklearn.model_selection._search import BaseSearchCV, ParameterSampler
 from optimus.optimizer import Optimizer
 from extra.fancyprint import say
 from vault import decoder
@@ -6,7 +7,8 @@ from vault import decoder
 
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, verbose=True, draw_samples=100, n_iter=10, refit=True):
+                 max_eval_time=120, use_ei_per_second=False, verbose=True, draw_samples=100, n_iter=10, refit=True,
+                 random_search=False):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -49,6 +51,9 @@ class ModelOptimizer(BaseSearchCV):
         refit: boolean, default=True
             Refit the best estimator with the entire dataset. If "False", it is impossible to make predictions using
             the estimator instance after fitting
+            
+        random_search: boolean
+            If true, use random search instead of bayesian search 
         """
 
         # Call to super
@@ -64,6 +69,7 @@ class ModelOptimizer(BaseSearchCV):
         self.max_eval_time = max_eval_time
         self.use_ei_per_second = use_ei_per_second
         self.verbose = verbose
+        self.random_search = random_search
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -91,13 +97,13 @@ class ModelOptimizer(BaseSearchCV):
         # Calculate derived variables
         self._setup()
 
-        say("Bayesian search with %s iterations" % self.n_iter, self.verbose, style="title")
+        # Use Randomized Search or Bayesian Optimization
+        if self.random_search:
+            self._random_search(X, y)
+        else:
+            self._bayesian_search(X, y)
 
-        for i in range(0, self.n_iter):
-            setting, ei = self.optimizer.maximize()
-            say("Iteration {}/{}. EI: {}".format(i + 1, self.n_iter, ei), self.verbose, style="subtitle")
-            self.optimizer.evaluate(setting, X, y)
-
+        # Store results
         self.cv_results_, self.best_index_, self.best_estimator_ = self.optimizer.create_cv_results()
 
         # Refit the best estimator on the whole dataset
@@ -127,7 +133,9 @@ class ModelOptimizer(BaseSearchCV):
             "max_eval_time": self.max_eval_time,
             "use_ei_per_second": self.use_ei_per_second,
             "verbose": self.verbose,
-            "draw_samples": self.draw_samples
+            "draw_samples": self.draw_samples,
+            "n_iter": self.n_iter,
+            "random_search": self.random_search
         }
 
     @staticmethod
@@ -151,12 +159,33 @@ class ModelOptimizer(BaseSearchCV):
             grid_size *= len(i)
         return grid_size
 
-    def _setup(self):
-        # Set maximum draw samples
-        self.draw_samples = min(self.draw_samples, self.get_grid_size(self.encoded_params))
+    def _bayesian_search(self, X, y):
+        say("Bayesian search with {} iterations".format(self.n_iter), self.verbose, style="title")
 
-        # Limit the number of iterations for a grid that is too small
-        self.n_iter = min(self.n_iter, self.get_grid_size(self.encoded_params))
+        for i in range(0, self.n_iter):
+            setting, ei = self.optimizer.maximize()
+            say("Iteration {}/{}. EI: {}".format(i + 1, self.n_iter, ei), self.verbose, style="subtitle")
+            self.optimizer.evaluate(setting, X, y)
+
+    def _random_search(self, X, y):
+        say("Randomized search with {} iterations".format(self.n_iter), self.verbose, style="title")
+        samples = [i for i in ParameterSampler(self.decoded_params, self.n_iter)]
+
+        for i in range(0, self.n_iter):
+            setting = samples[i]
+            say("Iteration {}/{}.".format(i + 1, self.n_iter), self.verbose, style="subtitle")
+            self.optimizer.evaluate(setting, X, y)
+
+    def _setup(self):
+
+        self.scorer_ = check_scoring(self.estimator, scoring=self.scoring)
+
+        # Set maximum draw samples, and limit the number of iterations for a grid that is too small
+        grid_size = self.get_grid_size(self.encoded_params)
+        self.draw_samples = min(self.draw_samples, grid_size)
+        self.n_iter = min(self.n_iter, grid_size)
+
+        say("Maximum number of iterations as limited by grid: {}".format(grid_size), verbose=self.verbose)
 
         # Decode parameters for use inside the Model Optimizer
         self.decoded_params = decoder.decode_params(self.encoded_params)
