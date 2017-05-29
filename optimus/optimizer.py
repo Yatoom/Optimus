@@ -69,7 +69,10 @@ class Optimizer:
         # Setup initial values
         self.validated_scores = []
         self.validated_params = []
-        self.validated_times = []
+        self.evaluation_times = []
+        self.maximize_times = []
+        self.cumulative_times = []
+        self.best_scores = []
         self.converted_params = None
         self.current_best_score = -np.inf
         self.current_best_time = np.inf
@@ -110,6 +113,8 @@ class Optimizer:
             The highest EI (per second)
         """
 
+        start = time.time()
+
         # Select a sample of parameters
         sampled_params = ParameterSampler(self.param_distributions, self.draw_samples)
 
@@ -119,42 +124,12 @@ class Optimizer:
 
         # Determine the best parameters
         best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
+
+        # Store running time
+        running_time = time.time() - start
+        self.maximize_times.append(running_time)
+
         return best_setting, best_score
-
-    def randomize(self, calculate_ei=False, score_optimum=None):
-        """
-        Get a random setting from the distribution.
-        
-        Parameters
-        ----------
-        calculate_ei: bool
-            Calculate and return expected improvement of sample
-        
-        score_optimum: float
-            The score optimum to pass to the EI formula, only needed when "calculate_ei=True"
-
-        Returns
-        -------
-        random_setting: dict
-            A random setting
-            
-        expected_improvement: float
-            Expected improvement, only returned when "calculate_ei=True"
-
-        """
-        if self.random_params is None:
-            self.random_params = ParameterSampler(self.param_distributions, self.draw_samples)
-            self.random_params_pointer = 0
-
-        if not calculate_ei:
-            return self.random_params
-
-        if score_optimum is None:
-            score_optimum = self.current_best_score
-
-        expected_improvement = self._realize(random_setting, 0, score_optimum)
-
-        return random_setting, expected_improvement
 
     def evaluate(self, parameters, X, y):
         """
@@ -196,7 +171,8 @@ class Optimizer:
 
             # Evaluate with timeout
             with Timeout(self.max_eval_time):
-                score = cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv, n_jobs=-1)
+                score = cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv,
+                                        n_jobs=-1)
 
         except (GeneratorExit, OSError, TimeoutError):
             say("Timeout error :(", self.verbose)
@@ -230,9 +206,10 @@ class Optimizer:
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
         self.converted_params = Converter.convert_settings(self.validated_params, self.param_distributions)
-        self.validated_times.append(running_time)
+        self.evaluation_times.append(running_time)
         self.current_best_time = min(running_time, self.current_best_time)
         self.current_best_score = max(score, self.current_best_score)
+        self.best_scores.append(self.current_best_score)
 
         say("Score: %s | best: %s | time: %s" % (score, self.current_best_score, running_time), self.verbose)
 
@@ -260,6 +237,11 @@ class Optimizer:
         cv_results = {
             "params": self.validated_params,
             "mean_test_score": self.validated_scores,
+            "evaluation_time": self.evaluation_times,
+            "maximize_time": self.maximize_times if len(self.maximize_times) == len(self.evaluation_times) else np.zeros(
+                len(self.evaluation_times)),
+            "best_score": self.best_scores,
+            "cumulative_time": self.validated_scores + np.cumsum(self.evaluation_times)
         }
 
         # Insert "param_*" keywords
@@ -330,7 +312,7 @@ class Optimizer:
         try:
             self.gp_score.fit(self.converted_params, self.validated_scores)
             if self.use_ei_per_second:
-                self.gp_time.fit(self.converted_params, self.validated_times)
+                self.gp_time.fit(self.converted_params, self.evaluation_times)
         except:
             print(traceback.format_exc())
 
@@ -377,7 +359,7 @@ class Optimizer:
         self.gp_score.fit(converted_settings, scores)
 
         if self.use_ei_per_second:
-            times, _ = Converter.remove_timeouts(self.validated_times, self.validated_scores, self.timeout_score)
+            times, _ = Converter.remove_timeouts(self.evaluation_times, self.validated_scores, self.timeout_score)
             self.gp_time.fit(converted_settings, times)
 
         setting = Converter.convert_setting(best_setting, self.param_distributions)

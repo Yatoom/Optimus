@@ -3,6 +3,7 @@ from sklearn.model_selection._search import BaseSearchCV, ParameterSampler
 from optimus.optimizer import Optimizer
 from extra.fancyprint import say
 from vault import decoder
+from tqdm import tqdm
 
 
 class ModelOptimizer(BaseSearchCV):
@@ -162,7 +163,7 @@ class ModelOptimizer(BaseSearchCV):
     def _bayesian_search(self, X, y):
         say("Bayesian search with {} iterations".format(self.n_iter), self.verbose, style="title")
 
-        for i in range(0, self.n_iter):
+        for i in tqdm(range(0, self.n_iter), ascii=False, leave=True):
             setting, ei = self.optimizer.maximize()
             say("Iteration {}/{}. EI: {}".format(i + 1, self.n_iter, ei), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
@@ -171,7 +172,7 @@ class ModelOptimizer(BaseSearchCV):
         say("Randomized search with {} iterations".format(self.n_iter), self.verbose, style="title")
         samples = [i for i in ParameterSampler(self.decoded_params, self.n_iter)]
 
-        for i in range(0, self.n_iter):
+        for i in tqdm(range(0, self.n_iter), ascii=False, leave=True):
             setting = samples[i]
             say("Iteration {}/{}.".format(i + 1, self.n_iter), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
@@ -191,7 +192,7 @@ class ModelOptimizer(BaseSearchCV):
         self.decoded_params = decoder.decode_params(self.encoded_params)
 
         # Setup optimizer
-        self.optimizer = Optimizer(estimator=self.estimator, param_distributions=self.decoded_params, inner_cv=10,
-                                   scoring=self.scoring, timeout_score=self.timeout_score,
+        self.optimizer = Optimizer(estimator=self.estimator, param_distributions=self.decoded_params,
+                                   inner_cv=self.inner_cv, scoring=self.scoring, timeout_score=self.timeout_score,
                                    max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples)
