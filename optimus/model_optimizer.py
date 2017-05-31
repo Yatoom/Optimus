@@ -164,7 +164,7 @@ class ModelOptimizer(BaseSearchCV):
         say("Bayesian search with {} iterations".format(self.n_iter), self.verbose, style="title")
 
         for i in tqdm(range(0, self.n_iter), ascii=False, leave=True):
-            setting, ei = self.optimizer.maximize()
+            setting, ei = self.optimizer.maximize(realize=False)
             say("Iteration {}/{}. EI: {}".format(i + 1, self.n_iter, ei), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
 

@@ -96,13 +96,16 @@ class Optimizer:
         # Returns the name of the estimator (e.g. LogisticRegression)
         return type(self.estimator).__name__
 
-    def maximize(self, score_optimum=None):
+    def maximize(self, score_optimum=None, realize=True):
         """
         
         Parameters
         ----------
         score_optimum: float
             An optional score to use inside the EI formula instead of the optimizer's current_best_score
+
+        realize: bool
+            Whether or not to give a more realistic estimate of the EI (default=True)
 
         Returns
         -------
@@ -123,7 +126,7 @@ class Optimizer:
             score_optimum = self.current_best_score
 
         # Determine the best parameters
-        best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
+        best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum, realize)
 
         # Store running time
         running_time = time.time() - start
@@ -199,20 +202,20 @@ class Optimizer:
             success = False
             score = [self.timeout_score]
 
-        running_time = time.time() - start if success else self.max_eval_time
-
         # Get the mean and store the results
         score = np.mean(score)  # type: float
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
         self.converted_params = Converter.convert_settings(self.validated_params, self.param_distributions)
-        self.evaluation_times.append(running_time)
-        self.current_best_time = min(running_time, self.current_best_time)
+
         self.current_best_score = max(score, self.current_best_score)
         self.best_scores.append(self.current_best_score)
 
-        say("Score: %s | best: %s | time: %s" % (score, self.current_best_score, running_time), self.verbose)
+        running_time = time.time() - start if success else self.max_eval_time
+        self.evaluation_times.append(running_time)
+        self.current_best_time = min(running_time, self.current_best_time)
 
+        say("Score: %s | best: %s | time: %s" % (score, self.current_best_score, running_time), self.verbose)
         return success, score, running_time
 
     def create_cv_results(self):
@@ -279,7 +282,7 @@ class Optimizer:
             result *= len(i)
         return result
 
-    def _maximize_on_sample(self, sampled_params, score_optimum):
+    def _maximize_on_sample(self, sampled_params, score_optimum, realize):
         """
         Finds the next best setting to evaluate from a set of samples. 
         
@@ -290,6 +293,9 @@ class Optimizer:
             
         score_optimum: float
             The score optimum value to pass to the EI formula
+
+        realize: bool
+            Whether or not to give a more realistic estimate of the EI
 
         Returns
         -------
@@ -326,7 +332,10 @@ class Optimizer:
                 best_score = score
                 best_setting = setting
 
-        return best_setting, self._realize(best_setting, best_score, score_optimum)
+        if realize:
+            return best_setting, self._realize(best_setting, best_score, score_optimum)
+        else:
+            return best_setting, best_score
 
     def _realize(self, best_setting, original, score_optimum):
         """
