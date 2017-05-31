@@ -8,8 +8,8 @@ from tqdm import tqdm
 
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, verbose=True, draw_samples=100, n_iter=10, refit=True,
-                 random_search=False):
+                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
+                 n_iter=10, refit=True, random_search=False):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -45,7 +45,10 @@ class ModelOptimizer(BaseSearchCV):
              
         use_ei_per_second: bool
             Whether to use the standard EI or the EI / sqrt(second)
-            
+
+        use_root_second: bool
+            Only used when "use_ei_per_second=True". Uses EI / sqrt(second) instead of EI /second.
+
         max_eval_time: int or float
             Time in seconds until evaluation times out
             
@@ -69,6 +72,7 @@ class ModelOptimizer(BaseSearchCV):
         self.timeout_score = timeout_score
         self.max_eval_time = max_eval_time
         self.use_ei_per_second = use_ei_per_second
+        self.use_root_second = use_root_second
         self.verbose = verbose
         self.random_search = random_search
 
@@ -195,4 +199,5 @@ class ModelOptimizer(BaseSearchCV):
         self.optimizer = Optimizer(estimator=self.estimator, param_distributions=self.decoded_params,
                                    inner_cv=self.inner_cv, scoring=self.scoring, timeout_score=self.timeout_score,
                                    max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
-                                   verbose=self.verbose, draw_samples=self.draw_samples)
+                                   verbose=self.verbose, draw_samples=self.draw_samples,
+                                   use_root_second=self.use_root_second)

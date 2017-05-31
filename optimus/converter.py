@@ -50,6 +50,25 @@ class Converter:
         return printable[:-2]
 
     @staticmethod
+    def readable_dict(dict_):
+        """
+        Makes a dictionary readable, so it can be stored as JSON.
+
+        Parameters
+        ----------
+        dict_: dict
+            Mapping of parameter keys to values
+
+        Returns
+        -------
+        Returns a dictionary with human-readable values.
+        """
+        dict_copy = copy(dict_)
+        for key, item in dict_.items():
+            dict_copy[key] = Converter.make_readable(item)
+        return dict_copy
+
+    @staticmethod
     def make_readable(value):
         """
         Makes a value more readable for humans by converting objects to names.

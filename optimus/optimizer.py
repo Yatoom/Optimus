@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, verbose=True, draw_samples=100):
+                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -46,7 +46,10 @@ class Optimizer:
             Maximum time for evaluation
             
         use_ei_per_second: bool
-            Whether to use the standard EI or the EI / sqrt(second)
+            Whether to use the standard EI or the EI / second
+
+        use_root_second: bool
+            Only used when "use_ei_per_second=True". Uses EI / sqrt(second) instead of EI /second.
             
         verbose: bool
             Whether to print extra information
@@ -63,6 +66,7 @@ class Optimizer:
         self.timeout_score = timeout_score
         self.max_eval_time = max_eval_time
         self.use_ei_per_second = use_ei_per_second
+        self.use_root_second = use_root_second
         self.verbose = verbose
         self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
 
@@ -239,6 +243,7 @@ class Optimizer:
         # Insert "params" and "mean_test_score" keywords
         cv_results = {
             "params": self.validated_params,
+            "readable_params": [Converter.readable_dict(dict_) for dict_ in self.validated_params],
             "mean_test_score": self.validated_scores,
             "evaluation_time": self.evaluation_times,
             "maximize_time": self.maximize_times if len(self.maximize_times) == len(self.evaluation_times) else np.zeros(
@@ -396,7 +401,9 @@ class Optimizer:
 
         if self.use_ei_per_second:
             seconds = self.gp_time.predict(point)
-            return ei / np.sqrt(seconds)
+            if self.use_root_second:
+                return ei / np.sqrt(seconds)
+            return ei / seconds
         return ei
 
     def _get_ei(self, point, score_optimum):

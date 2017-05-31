@@ -2,15 +2,13 @@
 import openml
 from optimus.model_optimizer import ModelOptimizer
 from vault import model_factory, decoder
-from pymongo import MongoClient
 import pandas as pd
 import numpy as np
 
 import matplotlib.pyplot as plt
+from benchmarks import config
 
-client = MongoClient('localhost', 27017)
-db = client.local
-table = db.NewBenchmark
+db, table = config.connect()
 
 
 def visualize(filter_, x, y):
@@ -36,6 +34,8 @@ def visualize(filter_, x, y):
         df["cumulative_evaluation_time"] = np.cumsum(df["evaluation_time"])
         df.plot(x, y, ax=ax, label=label)
 
+    plt.show()
+
 
 def benchmark(task_id, simple=True):
     task = openml.tasks.get_task(task_id)
@@ -53,49 +53,58 @@ def benchmark(task_id, simple=True):
     openml_splits = [(i.train, i.test) for i in task.iterate_all_splits()]
 
     # Benchmark individual
-    # print("Benchmarking random method")
-    # benchmark_random(estimator, params, openml_splits, X, y, task_id, simple=simple)
+    print("Benchmarking random method")
+    benchmark_random(estimator, params, openml_splits, X, y, task_id, simple=simple)
 
-    print("\n Benchmarking normal method")
-    benchmark_normal(estimator, params, openml_splits, X, y, task_id,  simple=simple)
+    print("\n Benchmarking EI method")
+    benchmark_normal(estimator, params, openml_splits, X, y, task_id, simple=simple)
 
-    print("\n Benchmarking root ei method")
+    print("\n Benchmarking EI per second method")
+    benchmark_ei_second(estimator, params, openml_splits, X, y, task_id, simple=simple)
+
+    print("\n Benchmarking EI per root second method")
     benchmark_root_second(estimator, params, openml_splits, X, y, task_id, simple=simple)
 
 
 def benchmark_random(estimator, params, openml_splits, X, y, task_id, simple=True):
     optimizer = ModelOptimizer(estimator=estimator, encoded_params=params, inner_cv=3, n_iter=50, random_search=True,
                                verbose=False)
-    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "random")
+    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "Randomized", estimator)
 
 
 def benchmark_normal(estimator, params, openml_splits, X, y, task_id, simple=True):
     optimizer = ModelOptimizer(estimator=estimator, encoded_params=params, inner_cv=3, n_iter=50, random_search=False,
                                verbose=False)
-    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "normal")
+    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "Normal", estimator)
+
+
+def benchmark_ei_second(estimator, params, openml_splits, X, y, task_id, simple=True):
+    optimizer = ModelOptimizer(estimator=estimator, encoded_params=params, inner_cv=3, n_iter=50, random_search=False,
+                               verbose=False, use_ei_per_second=True, use_root_second=False)
+    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "EI per second", estimator)
 
 
 def benchmark_root_second(estimator, params, openml_splits, X, y, task_id, simple=True):
     optimizer = ModelOptimizer(estimator=estimator, encoded_params=params, inner_cv=3, n_iter=50, random_search=False,
-                               verbose=False, use_ei_per_second=True)
-    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "root_second")
+                               verbose=False, use_ei_per_second=True, use_root_second=True)
+    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "EI per root second", estimator)
 
 
-def fit_and_store(optimizer, openml_splits, X, y, task_id, simple, method):
+def fit_and_store(optimizer, openml_splits, X, y, task_id, simple, method, estimator):
     if simple:
         optimizer.inner_cv = openml_splits
         optimizer.fit(X, y)
         results = optimizer.cv_results_
-        store_fold(task_id, method, 0, results)
+        store_fold(task_id, method, 0, results, estimator)
     else:
         for fold, (train, test) in enumerate(openml_splits):
             optimizer.fit(X[train], y[train])
             results = optimizer.cv_results_
             results["maximize_time"] = [0 for _ in optimizer.cv_results_["evaluation_time"]]
-            store_fold(task_id, method, fold, results)
+            store_fold(task_id, method, fold, results, estimator)
 
 
-def store_fold(task_id, method, fold, results):
+def store_fold(task_id, method, fold, results, estimator):
     for i in range(0, len(results["best_score"])):
         iteration = {
             "task": task_id,
@@ -107,6 +116,7 @@ def store_fold(task_id, method, fold, results):
             "evaluation_time": results["evaluation_time"][i],
             "maximize_time": results["maximize_time"][i],
             "cumulative_time": results["cumulative_time"][i],
-
+            "model": type(estimator).__name__,
+            "params": results["readable_params"][i]
         }
         table.insert(iteration)
