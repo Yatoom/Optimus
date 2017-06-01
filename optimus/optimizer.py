@@ -241,15 +241,17 @@ class Optimizer:
         """
 
         # Insert "params" and "mean_test_score" keywords
+        maximize_times = self.maximize_times if len(self.maximize_times) == len(self.evaluation_times) else np.zeros(
+                len(self.evaluation_times))
+
         cv_results = {
             "params": self.validated_params,
             "readable_params": [Converter.readable_dict(dict_) for dict_ in self.validated_params],
             "mean_test_score": self.validated_scores,
             "evaluation_time": self.evaluation_times,
-            "maximize_time": self.maximize_times if len(self.maximize_times) == len(self.evaluation_times) else np.zeros(
-                len(self.evaluation_times)),
+            "maximize_time": maximize_times,
             "best_score": self.best_scores,
-            "cumulative_time": self.validated_scores + np.cumsum(self.evaluation_times)
+            "cumulative_time": np.cumsum(maximize_times) + np.cumsum(self.evaluation_times)
         }
 
         # Insert "param_*" keywords
