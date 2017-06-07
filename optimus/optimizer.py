@@ -1,3 +1,4 @@
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, ParameterSampler
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -94,7 +95,8 @@ class Optimizer:
             n_restarts_optimizer=2)
 
         self.gp_score = gp  # type: GaussianProcessRegressor
-        self.gp_time = clone(gp)  # type: GaussianProcessRegressor
+        # self.gp_time = clone(gp)  # type: GaussianProcessRegressor
+        self.gp_time = LinearRegression(n_jobs=-1, normalize=True)
 
     def __str__(self):
         # Returns the name of the estimator (e.g. LogisticRegression)
@@ -102,7 +104,8 @@ class Optimizer:
 
     def maximize(self, score_optimum=None, realize=True):
         """
-        
+        Find the next best hyper-parameter setting to optimizer.
+
         Parameters
         ----------
         score_optimum: float
@@ -402,10 +405,20 @@ class Optimizer:
         ei = self._get_ei(point, score_optimum)
 
         if self.use_ei_per_second:
+
+            # Predict running time
             seconds = self.gp_time.predict(point)
+
+            # Some algorithms, such as Linear Regression, predict negative values for the running time. In that case,
+            # we take the lowest evaluation time we have observed so far.
+            if seconds <= 0:
+                seconds = np.min(self.evaluation_times)
+
             if self.use_root_second:
                 return ei / np.sqrt(seconds)
+
             return ei / seconds
+
         return ei
 
     def _get_ei(self, point, score_optimum):
