@@ -9,9 +9,10 @@ import matplotlib.pyplot as plt
 from benchmarks import config
 
 db, table = config.connect()
+version = 5
 
 
-def visualize(filter_, x, y):
+def visualize(filter_, x, y, statistic="mean"):
     """
     Plot a graph of the benchmark data.
 
@@ -19,14 +20,24 @@ def visualize(filter_, x, y):
     ----------
     filter_: dict
         A MongoDB filter, for example {"task": 49}
+
     x: str
         What data to use on the x-axis. For example "iteration".
+
     y: str
         What data to use on the y-axis. For example "best_score".
 
+    statistic: "mean", "max" or "median"
+        Show the mean, max or median of the iterations per fold
     """
     df = pd.DataFrame(list(table.find(filter_)))
-    fold_averages = df.groupby(["method", "iteration"]).mean().drop("fold", 1).reset_index()
+
+    if statistic == "median":
+        fold_averages = df.groupby(["method", "iteration"]).median().drop("fold", 1).reset_index()
+    elif statistic == "max":
+        fold_averages = df.groupby(["method", "iteration"]).max().drop("fold", 1).reset_index()
+    else:
+        fold_averages = df.groupby(["method", "iteration"]).mean().drop("fold", 1).reset_index()
 
     # Visualize
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -35,6 +46,47 @@ def visualize(filter_, x, y):
         df.plot(x, y, ax=ax, label=label)
 
     plt.show()
+
+
+def visualize_score_time(filter_, ratio=0.1, alt=False, statistic="mean"):
+    df = pd.DataFrame(list(table.find(filter_)))
+
+    if statistic == "median":
+        fold_averages = df.groupby(["method", "iteration"]).median().drop("fold", 1).reset_index()
+    elif statistic == "max":
+        fold_averages = df.groupby(["method", "iteration"]).max().drop("fold", 1).reset_index()
+    else:
+        fold_averages = df.groupby(["method", "iteration"]).mean().drop("fold", 1).reset_index()
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for label, df in fold_averages.groupby("method"):
+        df["cumulative_evaluation_time"] = np.cumsum(df["evaluation_time"])
+        if alt:
+            df["avg_scores"] = averaging_alt(df["score"].tolist())
+        else:
+            df["avg_scores"] = averaging(df["score"].tolist(), ratio=ratio)
+        df.plot(x="cumulative_evaluation_time", y="avg_scores", ax=ax, label=label)
+
+    plt.show()
+
+
+def averaging(numbers, ratio=0.1):
+    averaged = []
+    previous = numbers[0]
+    for number in numbers:
+        previous = previous * (1 - ratio) + number * ratio
+        averaged.append(previous)
+    return averaged
+
+
+def averaging_alt(numbers):
+    averaged_numbers = []
+    total = 0
+    for index, number in enumerate(numbers):
+        total += number
+        averaged = total / (index + 1)
+        averaged_numbers.append(averaged)
+    return averaged_numbers
 
 
 def benchmark(task_id, simple=True):
@@ -59,10 +111,10 @@ def benchmark(task_id, simple=True):
     print("\n Benchmarking EI method")
     benchmark_normal(estimator, params, openml_splits, X, y, task_id, simple=simple)
 
-    print("\n Benchmarking EI per second method")
+    print("\n Benchmarking EI per second method V{}".format(version))
     benchmark_ei_second(estimator, params, openml_splits, X, y, task_id, simple=simple)
 
-    print("\n Benchmarking EI per root second method")
+    print("\n Benchmarking EI per root second method V{}".format(version))
     benchmark_root_second(estimator, params, openml_splits, X, y, task_id, simple=simple)
 
 
@@ -81,13 +133,13 @@ def benchmark_normal(estimator, params, openml_splits, X, y, task_id, simple=Tru
 def benchmark_ei_second(estimator, params, openml_splits, X, y, task_id, simple=True):
     optimizer = ModelOptimizer(estimator=estimator, encoded_params=params, inner_cv=3, n_iter=50, random_search=False,
                                verbose=False, use_ei_per_second=True, use_root_second=False)
-    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "EI per second", estimator)
+    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "EI per second V{}".format(version), estimator)
 
 
 def benchmark_root_second(estimator, params, openml_splits, X, y, task_id, simple=True):
     optimizer = ModelOptimizer(estimator=estimator, encoded_params=params, inner_cv=3, n_iter=50, random_search=False,
                                verbose=False, use_ei_per_second=True, use_root_second=True)
-    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "EI per root second", estimator)
+    fit_and_store(optimizer, openml_splits, X, y, task_id, simple, "EI per root second V{}".format(version), estimator)
 
 
 def fit_and_store(optimizer, openml_splits, X, y, task_id, simple, method, estimator):
@@ -117,6 +169,7 @@ def store_fold(task_id, method, fold, results, estimator):
             "maximize_time": results["maximize_time"][i],
             "cumulative_time": results["cumulative_time"][i],
             "model": type(estimator).__name__,
-            "params": results["readable_params"][i]
+            "params": results["readable_params"][i],
+            "version": version
         }
         table.insert(iteration)
