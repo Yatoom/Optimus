@@ -4,6 +4,7 @@ from optimus.optimizer import Optimizer
 from extra.fancyprint import say
 from vault import decoder
 from tqdm import tqdm
+import numpy as np
 
 
 class ModelOptimizer(BaseSearchCV):
@@ -85,7 +86,7 @@ class ModelOptimizer(BaseSearchCV):
         self.decoded_params = None
         self.optimizer = None
 
-    def fit(self, X, y):
+    def fit(self, X, y, skip_setup=False):
         """
         Optimize the model for `n_rounds`.
 
@@ -97,16 +98,19 @@ class ModelOptimizer(BaseSearchCV):
         y: array of shape = [n_samples] or [n_samples, n_outputs]
             The target values (class labels) as integers or strings.
 
+        skip_setup: bool
+            Skip setup. Useful if you need to call setup manually.
         """
 
         # Calculate derived variables
-        self._setup()
+        if not skip_setup:
+            self._setup()
 
         # Use Randomized Search or Bayesian Optimization
         if self.random_search:
-            self._random_search(X, y)
+            self._random_search(X, y, self.n_iter)
         else:
-            self._bayesian_search(X, y)
+            self._bayesian_search(X, y, self.n_iter)
 
         # Store results
         self.cv_results_, self.best_index_, self.best_estimator_ = self.optimizer.create_cv_results()
@@ -164,21 +168,24 @@ class ModelOptimizer(BaseSearchCV):
             grid_size *= len(i)
         return grid_size
 
-    def _bayesian_search(self, X, y):
-        say("Bayesian search with {} iterations".format(self.n_iter), self.verbose, style="title")
+    def _bayesian_search(self, X, y, n_iter):
+        say("Bayesian search with {} iterations".format(n_iter), self.verbose, style="title")
 
-        for i in tqdm(range(0, self.n_iter), ascii=False, leave=True):
+        for i in tqdm(range(0, n_iter), ascii=False, leave=True):
             setting, ei = self.optimizer.maximize(realize=False)
-            say("Iteration {}/{}. EI: {}".format(i + 1, self.n_iter, ei), self.verbose, style="subtitle")
+            say("Iteration {}/{}. EI: {}".format(i + 1, n_iter, ei), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
 
-    def _random_search(self, X, y):
-        say("Randomized search with {} iterations".format(self.n_iter), self.verbose, style="title")
-        samples = [i for i in ParameterSampler(self.decoded_params, self.n_iter)]
+    def _random_search(self, X, y, n_iter, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
 
-        for i in tqdm(range(0, self.n_iter), ascii=False, leave=True):
+        say("Randomized search with {} iterations".format(n_iter), self.verbose, style="title")
+        samples = [i for i in ParameterSampler(self.decoded_params, n_iter)]
+
+        for i in tqdm(range(0, n_iter), ascii=False, leave=True):
             setting = samples[i]
-            say("Iteration {}/{}.".format(i + 1, self.n_iter), self.verbose, style="subtitle")
+            say("Iteration {}/{}.".format(i + 1, n_iter), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
 
     def _setup(self):

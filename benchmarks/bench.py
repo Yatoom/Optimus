@@ -10,6 +10,7 @@ from benchmarks import config
 
 db, table = config.connect()
 version = 5
+seed = 300
 
 
 def visualize(filter_, x, y, statistic="mean"):
@@ -145,7 +146,12 @@ def benchmark_root_second(estimator, params, openml_splits, X, y, task_id, simpl
 def fit_and_store(optimizer, openml_splits, X, y, task_id, simple, method, estimator):
     if simple:
         optimizer.inner_cv = openml_splits
-        optimizer.fit(X, y)
+
+        # Let the first three points be always the same
+        optimizer._setup()
+        optimizer._random_search(X, y, 3, seed=seed)
+        optimizer.fit(X, y, skip_setup=True)
+
         results = optimizer.cv_results_
         store_fold(task_id, method, 0, results, estimator)
     else:
