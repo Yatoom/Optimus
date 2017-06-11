@@ -18,7 +18,8 @@ warnings.filterwarnings("ignore")
 
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100):
+                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
+                 time_regression="gp"):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -56,7 +57,10 @@ class Optimizer:
             Whether to print extra information
             
         draw_samples: int
-            Number of randomly selected samples we maximize over 
+            Number of randomly selected samples we maximize over
+
+        time_regression: str
+            Which classifier to use for predicting running time ("linear": Linear Regression, "gp": Gaussian Processes)
         """
 
         # Accept parameters
@@ -95,8 +99,13 @@ class Optimizer:
             n_restarts_optimizer=2)
 
         self.gp_score = gp  # type: GaussianProcessRegressor
-        # self.gp_time = clone(gp)  # type: GaussianProcessRegressor
-        self.gp_time = LinearRegression(n_jobs=-1, normalize=True)
+
+        if time_regression == "gp":
+            self.time_regressor = clone(gp)
+        elif time_regression == "linear":
+            self.time_regressor = LinearRegression(n_jobs=-1, normalize=True)
+        else:
+            self.time_regressor = clone(gp)
 
     def __str__(self):
         # Returns the name of the estimator (e.g. LogisticRegression)
@@ -328,7 +337,7 @@ class Optimizer:
         try:
             self.gp_score.fit(self.converted_params, self.validated_scores)
             if self.use_ei_per_second:
-                self.gp_time.fit(self.converted_params, self.evaluation_times)
+                self.time_regressor.fit(self.converted_params, self.evaluation_times)
         except:
             print(traceback.format_exc())
 
@@ -379,7 +388,7 @@ class Optimizer:
 
         if self.use_ei_per_second:
             times, _ = Converter.remove_timeouts(self.evaluation_times, self.validated_scores, self.timeout_score)
-            self.gp_time.fit(converted_settings, times)
+            self.time_regressor.fit(converted_settings, times)
 
         setting = Converter.convert_setting(best_setting, self.param_distributions)
 
@@ -407,7 +416,7 @@ class Optimizer:
         if self.use_ei_per_second:
 
             # Predict running time
-            seconds = self.gp_time.predict(point)
+            seconds = self.time_regressor.predict(point)
 
             # Some algorithms, such as Linear Regression, predict negative values for the running time. In that case,
             # we take the lowest evaluation time we have observed so far.

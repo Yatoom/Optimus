@@ -10,7 +10,7 @@ import numpy as np
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 n_iter=10, refit=True, random_search=False):
+                 n_iter=10, refit=True, random_search=False, time_regression="gp"):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -58,7 +58,10 @@ class ModelOptimizer(BaseSearchCV):
             the estimator instance after fitting
             
         random_search: boolean
-            If true, use random search instead of bayesian search 
+            If true, use random search instead of bayesian search
+
+        time_regression: str
+            Which regression method to use for predicting time.
         """
 
         # Call to super
@@ -76,6 +79,7 @@ class ModelOptimizer(BaseSearchCV):
         self.use_root_second = use_root_second
         self.verbose = verbose
         self.random_search = random_search
+        self.time_regression = time_regression
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -177,6 +181,10 @@ class ModelOptimizer(BaseSearchCV):
             self.optimizer.evaluate(setting, X, y)
 
     def _random_search(self, X, y, n_iter, seed=None):
+        # Store random state
+        state = np.random.get_state()
+
+        # Set random seed
         if seed is not None:
             np.random.seed(seed)
 
@@ -187,6 +195,12 @@ class ModelOptimizer(BaseSearchCV):
             setting = samples[i]
             say("Iteration {}/{}.".format(i + 1, n_iter), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
+
+            # Manually add a maximize time of 0, since we don't use the maximize method
+            self.optimizer.maximize_times.append(0)
+
+        # Restore random state
+        np.random.set_state(state)
 
     def _setup(self):
 
@@ -207,4 +221,4 @@ class ModelOptimizer(BaseSearchCV):
                                    inner_cv=self.inner_cv, scoring=self.scoring, timeout_score=self.timeout_score,
                                    max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples,
-                                   use_root_second=self.use_root_second)
+                                   use_root_second=self.use_root_second, time_regression=self.time_regression)
