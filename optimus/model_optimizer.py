@@ -10,7 +10,7 @@ import numpy as np
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 n_iter=10, refit=True, random_search=False, time_regression="gp"):
+                 n_iter=10, refit=True, random_search=False, time_regression="gp", score_regression="gp"):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -61,7 +61,10 @@ class ModelOptimizer(BaseSearchCV):
             If true, use random search instead of bayesian search
 
         time_regression: str
-            Which regression method to use for predicting time.
+            Which regression method to use for predicting time
+
+        score_regression: str
+            Which regression method to use for the expected improvement
         """
 
         # Call to super
@@ -80,6 +83,7 @@ class ModelOptimizer(BaseSearchCV):
         self.verbose = verbose
         self.random_search = random_search
         self.time_regression = time_regression
+        self.score_regression = score_regression
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -221,4 +225,5 @@ class ModelOptimizer(BaseSearchCV):
                                    inner_cv=self.inner_cv, scoring=self.scoring, timeout_score=self.timeout_score,
                                    max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples,
-                                   use_root_second=self.use_root_second, time_regression=self.time_regression)
+                                   use_root_second=self.use_root_second, time_regression=self.time_regression,
+                                   score_regression=self.score_regression)

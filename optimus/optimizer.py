@@ -3,6 +3,7 @@ from sklearn.model_selection import cross_val_score, ParameterSampler
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
 from optimus.converter import Converter
+from skgarden import RandomForestRegressor
 from optimus.builder import Builder
 from extra.timeout import Timeout
 from extra.fancyprint import say
@@ -19,7 +20,7 @@ warnings.filterwarnings("ignore")
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 time_regression="gp"):
+                 time_regression="gp", score_regression="gp", random_state=3):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -61,6 +62,12 @@ class Optimizer:
 
         time_regression: str
             Which classifier to use for predicting running time ("linear": Linear Regression, "gp": Gaussian Processes)
+
+        score_regression: str
+            Which classifier to use for predicting running time ("forest": Random Forest, "gp": Gaussian Processes)
+
+        random_state: int
+            Random state for the regressors.
         """
 
         # Accept parameters
@@ -95,17 +102,21 @@ class Optimizer:
 
         gp = GaussianProcessRegressor(
             kernel=cov_amplitude * other_kernel,
-            normalize_y=True, random_state=3, alpha=0.0,
+            normalize_y=True, random_state=random_state, alpha=0.0,
             n_restarts_optimizer=2)
 
-        self.gp_score = gp  # type: GaussianProcessRegressor
+        # Setup score regressor (for predicting EI)
+        if score_regression == "forest":
+            self.score_regressor = RandomForestRegressor(n_estimators=100, min_samples_leaf=3, n_jobs=-1,
+                                                         random_state=random_state)
+        else:
+            self.score_regressor = clone(gp)  # type: GaussianProcessRegressor
 
-        if time_regression == "gp":
-            self.time_regressor = clone(gp)
-        elif time_regression == "linear":
+        # Setup time regressor (for predicting evaluation running times)
+        if time_regression == "linear":
             self.time_regressor = LinearRegression(n_jobs=-1, normalize=True)
         else:
-            self.time_regressor = clone(gp)
+            self.time_regressor = clone(gp)  # type GaussianProcessRegressor
 
     def __str__(self):
         # Returns the name of the estimator (e.g. LogisticRegression)
@@ -335,7 +346,7 @@ class Optimizer:
 
         # Fit parameters
         try:
-            self.gp_score.fit(self.converted_params, self.validated_scores)
+            self.score_regressor.fit(self.converted_params, self.validated_scores)
             if self.use_ei_per_second:
                 self.time_regressor.fit(self.converted_params, self.evaluation_times)
         except:
@@ -384,7 +395,7 @@ class Optimizer:
             return original
 
         converted_settings = Converter.convert_settings(params, self.param_distributions)
-        self.gp_score.fit(converted_settings, scores)
+        self.score_regressor.fit(converted_settings, scores)
 
         if self.use_ei_per_second:
             times, _ = Converter.remove_timeouts(self.evaluation_times, self.validated_scores, self.timeout_score)
@@ -448,11 +459,11 @@ class Optimizer:
         """
 
         # Extra check. This way seems to work around rounding errors, and it can be computed surprisingly fast.
-        if point in self.gp_score.X_train_.tolist():
+        if hasattr(self.score_regressor, 'X_train_') and point in self.score_regressor.X_train_.tolist():
             return -1
 
         point = np.array(point).reshape(1, -1)
-        mu, sigma = self.gp_score.predict(point, return_std=True)
+        mu, sigma = self.score_regressor.predict(point, return_std=True)
         mu = mu[0]
         sigma = sigma[0]
 
