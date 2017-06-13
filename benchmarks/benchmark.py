@@ -113,7 +113,7 @@ class Benchmark:
         for i in range(0, len(results["best_score"])):
             iteration = {
                 "task": self.task_id,
-                "method": "{} (EI: {}, RT: {})".format(method.name, time_regressor, score_regressor),
+                "method": "{} (EI: {}, RT: {})".format(method.name, score_regressor, time_regressor),
                 "iteration": i,
                 "score": results["mean_test_score"][i],
                 "best_score": results["best_score"][i],

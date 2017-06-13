@@ -107,7 +107,7 @@ class Optimizer:
 
         # Setup score regressor (for predicting EI)
         if score_regression == "forest":
-            self.score_regressor = RandomForestRegressor(n_estimators=100, min_samples_leaf=3, n_jobs=-1,
+            self.score_regressor = RandomForestRegressor(n_estimators=10, min_samples_leaf=3, n_jobs=1,
                                                          random_state=random_state)
         else:
             self.score_regressor = clone(gp)  # type: GaussianProcessRegressor
@@ -265,7 +265,7 @@ class Optimizer:
 
         # Insert "params" and "mean_test_score" keywords
         maximize_times = self.maximize_times if len(self.maximize_times) == len(self.evaluation_times) else np.zeros(
-                len(self.evaluation_times))
+            len(self.evaluation_times))
 
         cv_results = {
             "params": self.validated_params,
@@ -339,10 +339,11 @@ class Optimizer:
         # A little trick to count the number of validated scores that are not equal to the timeout_score value
         # Numpy's count_nonzero is used to count non-False's instead of non-zeros.
         num_valid_scores = np.count_nonzero(~(np.array(self.validated_scores) == self.timeout_score))
+        sampled_params_list = [i for i in sampled_params]
 
         # Check if the number of validated scores (without timeouts) is zero
         if num_valid_scores == 0:
-            return np.random.choice([i for i in sampled_params]), 0
+            return np.random.choice(sampled_params_list), 0
 
         # Fit parameters
         try:
@@ -352,20 +353,16 @@ class Optimizer:
         except:
             print(traceback.format_exc())
 
-        best_score = - np.inf
-        best_setting = None
-        for setting in sampled_params:
-            converted_setting = Converter.convert_setting(setting, self.param_distributions)
-            score = self._get_ei_per_second(converted_setting, score_optimum)
-
-            if score > best_score:
-                best_score = score
-                best_setting = setting
+        converted_settings = Converter.convert_settings(sampled_params_list, param_distributions=self.param_distributions)
+        scores = self._get_eis_per_second(converted_settings, score_optimum)
+        best_index = np.argmax(scores)  # type: int
+        best_score = scores[best_index]
+        best_setting = sampled_params_list[best_index]
 
         if realize:
-            return best_setting, self._realize(best_setting, best_score, score_optimum)
-        else:
-            return best_setting, best_score
+            best_score = self._realize(best_setting, best_score, score_optimum)
+
+        return best_setting, best_score
 
     def _realize(self, best_setting, original, score_optimum):
         """
@@ -405,18 +402,59 @@ class Optimizer:
 
         return self._get_ei_per_second(setting, score_optimum)
 
+    def _get_eis_per_second(self, points, score_optimum):
+        eis = self._get_eis(points, score_optimum)
+
+        if self.use_ei_per_second:
+
+            # Predict running times
+            running_times = self.time_regressor.predict(points)
+
+            # Some algorithms, such as Linear Regression, predict negative values for the running time. In that case,
+            # we take the lowest evaluation time we have observed so far
+            for index, value in enumerate(running_times):
+                if value <= 0:
+                    running_times[index] = np.min(self.evaluation_times)
+
+            if self.use_root_second:
+                return eis / np.sqrt(running_times)
+
+            return eis / running_times
+
+        return eis
+
+    def _get_eis(self, points, score_optimum):
+        # Predict mu's and sigmas for each point
+        mu, sigma = self.score_regressor.predict(points, return_std=True)
+
+        # Subtract each item in list by score_optimum
+        diff = mu - score_optimum
+
+        # Divide each diff by each sigma
+        Z = diff / sigma
+
+        # Calculate EI's
+        ei = diff * norm.cdf(Z) + sigma * norm.pdf(Z)
+
+        # Make EI zero when sigma is zero
+        for index, value in enumerate(sigma):
+            if value <= 1e-05:
+                ei[index] = 0
+
+        return ei
+
     def _get_ei_per_second(self, point, score_optimum):
         """
         Calculate the expected improvement and divide it by the square root of the estimated validation time.
-        
+
         Parameters
         ----------
         point:
             Setting to predict on
-            
+
         score_optimum: float
             The score optimum value to use inside the EI formula
-            
+
         Returns
         -------
         Return the EI / sqrt(estimated seconds) or the EI, depending on the use_ei_per_second value
