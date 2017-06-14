@@ -12,12 +12,21 @@ db, table = config.connect()
 seed = None
 
 
-def visualize(filter_, x, y, statistic="mean"):
+def visualize(filter_, x, y, statistic="mean", x_label=None, y_label=None, title="Results"):
     """
     Plot a graph of the benchmark data.
 
     Parameters
     ----------
+    title: str
+        Title for plot
+
+    y_label: str
+        Label for y-axis
+
+    x_label: str
+        Label for x-axis
+
     filter_: dict
         A MongoDB filter, for example {"task": 49}
 
@@ -35,6 +44,11 @@ def visualize(filter_, x, y, statistic="mean"):
 
     # Visualize
     fig, ax = plt.subplots(figsize=(8, 6))
+    x_label = x if x_label is None else x_label
+    y_label = y if y_label is None else y_label
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
     for label, df in fold_averages.groupby("method"):
         df["cumulative_evaluation_time"] = np.cumsum(df["evaluation_time"])
         df.plot(x, y, ax=ax, label=label)
@@ -42,7 +56,8 @@ def visualize(filter_, x, y, statistic="mean"):
     plt.show()
 
 
-def visualize_average(filter_=None, statistic="mean", x="cumulative_time", y="score"):
+def visualize_average(filter_=None, statistic="mean", x="cumulative_time", y="score", x_label=None, y_label=None,
+                      title="Results"):
     if filter_ is None:
         filter_ = {}
 
@@ -50,10 +65,19 @@ def visualize_average(filter_=None, statistic="mean", x="cumulative_time", y="sc
     fold_averages = calc_fold_averages(df, statistic=statistic)
 
     fig, ax = plt.subplots(figsize=(8, 6))
+    x_label = x if x_label is None else x_label
+    y_label = y if y_label is None else y_label
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+    colors = ["#16a085", "#C6F0DA", "#3498db", "#9b59b6", "#FF9696", "#f1c40f", "#e67e22", "#e74c3c", "#95a5a6",
+              "#8BCBDE", "#45362E", "#63393E", "#B0DACC", "#3C3741", "#025159", "#EF9688", "#02135C"]
+    pointer = 0
     for label, df in fold_averages.groupby("method"):
         df["cumulative_evaluation_time"] = np.cumsum(df["evaluation_time"])
         df["avg_scores"] = averaging(df[y].tolist())
-        df.plot(x=x, y="avg_scores", ax=ax, label=label)
+        df.plot(x=x, y="avg_scores", ax=ax, label=label, color=colors[pointer])
+        pointer += 1
 
     plt.show()
 

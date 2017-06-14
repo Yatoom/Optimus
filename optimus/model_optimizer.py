@@ -9,7 +9,7 @@ import numpy as np
 
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
+                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=150,
                  n_iter=10, refit=True, random_search=False, time_regression="gp", score_regression="gp"):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 

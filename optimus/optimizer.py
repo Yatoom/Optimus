@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore")
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 time_regression="gp", score_regression="gp", random_state=3):
+                 time_regression="gp", score_regression="gp", random_state=42):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -107,8 +107,8 @@ class Optimizer:
 
         # Setup score regressor (for predicting EI)
         if score_regression == "forest":
-            self.score_regressor = RandomForestRegressor(n_estimators=10, min_samples_leaf=3, n_jobs=1,
-                                                         random_state=random_state)
+            self.score_regressor = RandomForestRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
+                                                         n_jobs=1, max_depth=20, random_state=random_state)
         else:
             self.score_regressor = clone(gp)  # type: GaussianProcessRegressor
 
@@ -339,7 +339,9 @@ class Optimizer:
         # A little trick to count the number of validated scores that are not equal to the timeout_score value
         # Numpy's count_nonzero is used to count non-False's instead of non-zeros.
         num_valid_scores = np.count_nonzero(~(np.array(self.validated_scores) == self.timeout_score))
-        sampled_params_list = [i for i in sampled_params]
+
+        # Convert sampled_params to list and remove already tried parameters
+        sampled_params_list = [i for i in sampled_params if i not in self.validated_params]
 
         # Check if the number of validated scores (without timeouts) is zero
         if num_valid_scores == 0:
@@ -402,7 +404,31 @@ class Optimizer:
 
         return self._get_ei_per_second(setting, score_optimum)
 
+    def _get_ei_per_second(self, point, score_optimum):
+        """
+        Wrapper for _get_eis_per_second()
+        """
+        eis = self._get_eis_per_second([point], score_optimum)
+        return eis[0]
+
     def _get_eis_per_second(self, points, score_optimum):
+        """
+        Calculate the expected improvement and divide it by the (square root) of the running time, if
+        "self.use_ei_per_second == True".
+
+        Parameters
+        ----------
+        points:
+            Settings to predict on
+
+        score_optimum: float
+            The score optimum value to use inside the EI formula
+
+        Returns
+        -------
+        Return the Expected Improvements (per (root) second)
+        """
+
         eis = self._get_eis(points, score_optimum)
 
         if self.use_ei_per_second:
@@ -424,11 +450,29 @@ class Optimizer:
         return eis
 
     def _get_eis(self, points, score_optimum):
+        """
+        Calculate the expected improvements for all points.
+
+        Parameters
+        ----------
+        points: list
+            List of parameter settings for the GP to predict on
+
+        score_optimum: float
+            The score optimum value to use for calculating the difference against the expected value
+
+        Returns
+        -------
+        Returns the Expected Improvement
+        """
+
         # Predict mu's and sigmas for each point
         mu, sigma = self.score_regressor.predict(points, return_std=True)
 
         # Subtract each item in list by score_optimum
-        diff = mu - score_optimum
+        # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
+        # (2.3.2 Exploration-exploitation trade-of)
+        diff = mu - (score_optimum - 0.01)
 
         # Divide each diff by each sigma
         Z = diff / sigma
@@ -436,88 +480,9 @@ class Optimizer:
         # Calculate EI's
         ei = diff * norm.cdf(Z) + sigma * norm.pdf(Z)
 
-        # Make EI zero when sigma is zero
+        # Make EI zero when sigma is zero (but then -1 when sigma <= 1e-05 to be more sure that everything goes well)
         for index, value in enumerate(sigma):
             if value <= 1e-05:
-                ei[index] = 0
-
-        return ei
-
-    def _get_ei_per_second(self, point, score_optimum):
-        """
-        Calculate the expected improvement and divide it by the square root of the estimated validation time.
-
-        Parameters
-        ----------
-        point:
-            Setting to predict on
-
-        score_optimum: float
-            The score optimum value to use inside the EI formula
-
-        Returns
-        -------
-        Return the EI / sqrt(estimated seconds) or the EI, depending on the use_ei_per_second value
-        """
-
-        ei = self._get_ei(point, score_optimum)
-
-        if self.use_ei_per_second:
-
-            # Predict running time
-            seconds = self.time_regressor.predict(point)
-
-            # Some algorithms, such as Linear Regression, predict negative values for the running time. In that case,
-            # we take the lowest evaluation time we have observed so far.
-            if seconds <= 0:
-                seconds = np.min(self.evaluation_times)
-
-            if self.use_root_second:
-                return ei / np.sqrt(seconds)
-
-            return ei / seconds
-
-        return ei
-
-    def _get_ei(self, point, score_optimum):
-        """
-        Calculate the expected improvement.
-        
-        Parameters
-        ----------
-        point: list
-            Parameter setting for the GP to predict on
-            
-        score_optimum: float
-            The score optimum value to use for calculating the difference against the expected value
-        
-        Returns
-        -------
-        Returns the Expected Improvement
-        """
-
-        # Extra check. This way seems to work around rounding errors, and it can be computed surprisingly fast.
-        if hasattr(self.score_regressor, 'X_train_') and point in self.score_regressor.X_train_.tolist():
-            return -1
-
-        point = np.array(point).reshape(1, -1)
-        mu, sigma = self.score_regressor.predict(point, return_std=True)
-        mu = mu[0]
-        sigma = sigma[0]
-
-        # We want our mu to be higher than the best score
-        # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
-        # (2.3.2 Exploration-exploitation trade-of)
-        # Intuition: makes diff less important, while sigma becomes more important
-        diff = mu - score_optimum  # - 0.01
-
-        # If sigma is zero, this means we have already seen that point, so we do not need to evaluate it again.
-        # We use a value slightly higher than 0 in case of small machine rounding errors.
-        if sigma <= 1e-05:
-            return 0
-
-        # Expected improvement function
-        Z = diff / sigma
-        ei = diff * norm.cdf(Z) + sigma * norm.pdf(Z)
+                ei[index] = -1
 
         return ei
