@@ -3,7 +3,7 @@ from sklearn.model_selection import cross_val_score, ParameterSampler
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
 from optimus.converter import Converter
-from skgarden import RandomForestRegressor
+from skgarden import RandomForestRegressor, ExtraTreesRegressor
 from optimus.builder import Builder
 from extra.timeout import Timeout
 from extra.fancyprint import say
@@ -93,30 +93,55 @@ class Optimizer:
         self.current_best_score = -np.inf
         self.current_best_time = np.inf
 
-        # Setting up the Gaussian Process Regressors
-        cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
-        other_kernel = Matern(
-            length_scale=np.ones(len(self.param_distributions)),
-            length_scale_bounds=[(0.01, 100)] * len(self.param_distributions),
-            nu=2.5)
+        # Helper function to create Gaussian Process Regressor
+        def get_gaussian_process_regressor():
+            cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
+            other_kernel = Matern(
+                length_scale=np.ones(len(self.param_distributions)),
+                length_scale_bounds=[(0.01, 100)] * len(self.param_distributions),
+                nu=2.5)
 
-        gp = GaussianProcessRegressor(
-            kernel=cov_amplitude * other_kernel,
-            normalize_y=True, random_state=random_state, alpha=0.0,
-            n_restarts_optimizer=2)
+            return GaussianProcessRegressor(
+                kernel=cov_amplitude * other_kernel,
+                normalize_y=True, random_state=random_state, alpha=0.0,
+                n_restarts_optimizer=2)
+
+        # Helper function to create Random Forest Regressor
+        def get_random_forest_regressor():
+            return RandomForestRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
+                                                         n_jobs=1, max_depth=20, random_state=random_state)
+
+        # Helper function to create Extra Trees Regressor
+        def get_extra_trees_regressor():
+            return ExtraTreesRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
+                                n_jobs=1, max_depth=20, random_state=random_state)
+
+        # Helper function to create Linear Regressor
+        def get_linear_regressor():
+            return LinearRegression(normalize=True, n_jobs=1)
 
         # Setup score regressor (for predicting EI)
         if score_regression == "forest":
-            self.score_regressor = RandomForestRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
-                                                         n_jobs=1, max_depth=20, random_state=random_state)
+            self.score_regressor = get_random_forest_regressor()
+        elif score_regression == "extra forest":
+            self.score_regressor = get_extra_trees_regressor()
+        elif score_regression == "gp":
+            self.score_regressor = get_gaussian_process_regressor()
         else:
-            self.score_regressor = clone(gp)  # type: GaussianProcessRegressor
+            raise ValueError("The value '{}' is not a valid value for 'score_regression'".format(score_regression))
 
-        # Setup time regressor (for predicting evaluation running times)
-        if time_regression == "linear":
-            self.time_regressor = LinearRegression(n_jobs=-1, normalize=True)
-        else:
-            self.time_regressor = clone(gp)  # type GaussianProcessRegressor
+        # Setup score regressor (for predicting running time)
+        if use_ei_per_second:
+            if time_regression == "forest":
+                self.time_regressor = get_random_forest_regressor()
+            elif time_regression == "extra forest":
+                self.time_regressor = get_extra_trees_regressor()
+            elif time_regression == "gp":
+                self.time_regressor = get_gaussian_process_regressor()
+            elif time_regression == "linear":
+                self.time_regressor = get_linear_regressor()
+            else:
+                raise ValueError("The value '{}' is not a valid value for 'time_regression'".format(time_regression))
 
     def __str__(self):
         # Returns the name of the estimator (e.g. LogisticRegression)
