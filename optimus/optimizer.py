@@ -288,9 +288,15 @@ class Optimizer:
 
         """
 
-        # Insert "params" and "mean_test_score" keywords
-        maximize_times = self.maximize_times if len(self.maximize_times) == len(self.evaluation_times) else np.zeros(
-            len(self.evaluation_times))
+        # Cleanup: make sure the number of maximize times equals the number of evaluation times. It could be that there
+        # are more maximize times, when the model optimizer runs out of time and can't run a matching evaluate() for the
+        # last maximize() call. On the other hand, when we do a random search, we only need to evaluate(), so if we
+        # forget to manually add a maximize time of 0, we will fill everything up with zeros here.
+        maximize_times = self.maximize_times
+        while len(maximize_times) > len(self.evaluation_times):
+            maximize_times.pop()
+        while len(self.evaluation_times) > len(maximize_times):
+            maximize_times.append(0)
 
         cv_results = {
             "params": self.validated_params,

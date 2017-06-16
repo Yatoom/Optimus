@@ -1,3 +1,4 @@
+import time
 from sklearn.metrics.scorer import check_scoring
 from sklearn.model_selection._search import BaseSearchCV, ParameterSampler
 from optimus.optimizer import Optimizer
@@ -10,7 +11,8 @@ import numpy as np
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=150,
-                 n_iter=10, refit=True, random_search=False, time_regression="gp", score_regression="gp"):
+                 n_iter=10, refit=True, random_search=False, time_regression="gp", score_regression="gp",
+                 max_run_time=1500):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -65,6 +67,9 @@ class ModelOptimizer(BaseSearchCV):
 
         score_regression: str
             Which regression method to use for the expected improvement
+
+        max_run_time: int
+            Maximum running time in seconds
         """
 
         # Call to super
@@ -84,6 +89,7 @@ class ModelOptimizer(BaseSearchCV):
         self.random_search = random_search
         self.time_regression = time_regression
         self.score_regression = score_regression
+        self.max_run_time = max_run_time
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -93,6 +99,7 @@ class ModelOptimizer(BaseSearchCV):
         self.cv_results_ = None
         self.decoded_params = None
         self.optimizer = None
+        self.start_time = time.time()
 
     def fit(self, X, y, skip_setup=False):
         """
@@ -113,6 +120,9 @@ class ModelOptimizer(BaseSearchCV):
         # Calculate derived variables
         if not skip_setup:
             self._setup()
+
+        # Start timer
+        self.start_time = time.time()
 
         # Use Randomized Search or Bayesian Optimization
         if self.random_search:
@@ -180,9 +190,27 @@ class ModelOptimizer(BaseSearchCV):
         say("Bayesian search with {} iterations".format(n_iter), self.verbose, style="title")
 
         for i in tqdm(range(0, n_iter), ascii=False, leave=True):
+
+            # Stop loop if we are out of time
+            if self._over_time():
+                break
+
+            # Find best setting to evaluate
             setting, ei = self.optimizer.maximize(realize=False)
             say("Iteration {}/{}. EI: {}".format(i + 1, n_iter, ei), self.verbose, style="subtitle")
+
+            # Stop loop if we are out of time
+            if self._over_time():
+                break
+
+            # If we get close to the max_run_time, we set max_eval_time to the remaining time
+            self.optimizer.max_eval_time = int(min([self.max_eval_time, self._get_remaining_time()]))
+
+            # Evaluate setting
             self.optimizer.evaluate(setting, X, y)
+
+        # Restore max_eval_time
+        self.optimizer.max_eval_time = self.max_eval_time
 
     def _random_search(self, X, y, n_iter, seed=None):
         # Store random state
@@ -196,6 +224,15 @@ class ModelOptimizer(BaseSearchCV):
         samples = [i for i in ParameterSampler(self.decoded_params, n_iter)]
 
         for i in tqdm(range(0, n_iter), ascii=False, leave=True):
+
+            # Stop loop if we are out of time
+            if self._over_time():
+                break
+
+            # If we get close to the max_run_time, we set max_eval_time to the remaining time
+            self.optimizer.max_eval_time = int(min([self.max_eval_time, self._get_remaining_time()]))
+
+            # Evaluate sample
             setting = samples[i]
             say("Iteration {}/{}.".format(i + 1, n_iter), self.verbose, style="subtitle")
             self.optimizer.evaluate(setting, X, y)
@@ -205,6 +242,15 @@ class ModelOptimizer(BaseSearchCV):
 
         # Restore random state
         np.random.set_state(state)
+
+        # Restore max_eval_time
+        self.optimizer.max_eval_time = self.max_eval_time
+
+    def _over_time(self):
+        return self._get_remaining_time() > 0
+
+    def _get_remaining_time(self):
+        return time.time() - self.start_time - self.max_run_time
 
     def _setup(self):
 
