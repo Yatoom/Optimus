@@ -1,7 +1,4 @@
 # This benchmark needs to be done one a single node.
-import openml
-from optimus.model_optimizer import ModelOptimizer
-from vault import model_factory, decoder
 import pandas as pd
 import numpy as np
 
@@ -40,7 +37,7 @@ def visualize(filter_, x, y, statistic="mean", x_label=None, y_label=None, title
         Show the mean, max or median of the iterations per fold
     """
     df = pd.DataFrame(list(table.find(filter_)))
-    fold_averages = calc_fold_averages(df, statistic=statistic)
+    iteration_averages = calc_iteration_averages(df, statistic=statistic)
 
     # Visualize
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -49,7 +46,7 @@ def visualize(filter_, x, y, statistic="mean", x_label=None, y_label=None, title
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.set_title(title)
-    for label, df in fold_averages.groupby("method"):
+    for label, df in iteration_averages.groupby("method"):
         df["cumulative_evaluation_time"] = np.cumsum(df["evaluation_time"])
         df.plot(x, y, ax=ax, label=label)
 
@@ -62,7 +59,7 @@ def visualize_average(filter_=None, statistic="mean", x="cumulative_time", y="sc
         filter_ = {}
 
     df = pd.DataFrame(list(table.find(filter_)))
-    fold_averages = calc_fold_averages(df, statistic=statistic)
+    iteration_averages = calc_iteration_averages(df, statistic=statistic)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     x_label = x if x_label is None else x_label
@@ -73,7 +70,7 @@ def visualize_average(filter_=None, statistic="mean", x="cumulative_time", y="sc
     colors = ["#16a085", "#C6F0DA", "#3498db", "#9b59b6", "#FF9696", "#f1c40f", "#e67e22", "#e74c3c", "#95a5a6",
               "#8BCBDE", "#45362E", "#63393E", "#B0DACC", "#3C3741", "#025159", "#EF9688", "#02135C"]
     pointer = 0
-    for label, df in fold_averages.groupby("method"):
+    for label, df in iteration_averages.groupby("method"):
         df["cumulative_evaluation_time"] = np.cumsum(df["evaluation_time"])
         df["avg_scores"] = averaging(df[y].tolist())
         df.plot(x=x, y="avg_scores", ax=ax, label=label, color=colors[pointer])
@@ -82,22 +79,22 @@ def visualize_average(filter_=None, statistic="mean", x="cumulative_time", y="sc
     plt.show()
 
 
-def calc_fold_averages(df, statistic="mean"):
+def calc_iteration_averages(df, statistic="mean"):
     if statistic == "median":
-        fold_averages = df.groupby(["method", "iteration"]).median().reset_index()
+        iteration_averages = df.groupby(["method", "iteration"]).median().reset_index()
     elif statistic == "max":
-        fold_averages = df.groupby(["method", "iteration"]).max().reset_index()
+        iteration_averages = df.groupby(["method", "iteration"]).max().reset_index()
     else:
-        fold_averages = df.groupby(["method", "iteration"]).mean().reset_index()
+        iteration_averages = df.groupby(["method", "iteration"]).mean().reset_index()
 
-    fold_averages["best_rank"] = rank(fold_averages, key="best_score")
-    fold_averages["rank"] = rank(fold_averages, key="score")
+    iteration_averages["best_rank"] = rank(iteration_averages, key="best_score")
+    iteration_averages["rank"] = rank(iteration_averages, key="score")
 
-    return fold_averages
+    return iteration_averages
 
 
-def rank(fold_averages, key="best_score"):
-    ranks = fold_averages[["iteration", "method", key]].groupby(["iteration"]).rank(numeric_only=True, axis=0)
+def rank(iteration_averages, key="best_score"):
+    ranks = iteration_averages[["iteration", "method", key]].groupby(["iteration"]).rank(numeric_only=True, axis=0)
 
     return np.array(ranks[key]).tolist()
 
@@ -110,3 +107,13 @@ def averaging(numbers):
         averaged = total / (index + 1)
         averaged_numbers.append(averaged)
     return averaged_numbers
+
+
+def get_best_score_at_time(timestep, times, scores):
+    reversed_times = reversed(times)
+
+    for index, time in enumerate(reversed_times):
+        if timestep >= time:
+            return scores[-(index + 1)]
+
+    return 0

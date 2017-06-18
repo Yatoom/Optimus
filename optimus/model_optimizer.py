@@ -247,10 +247,10 @@ class ModelOptimizer(BaseSearchCV):
         self.optimizer.max_eval_time = self.max_eval_time
 
     def _over_time(self):
-        return self._get_remaining_time() > 0
+        return self._get_remaining_time() <= 0
 
     def _get_remaining_time(self):
-        return time.time() - self.start_time - self.max_run_time
+        return self.max_run_time - (time.time() - self.start_time)
 
     def _setup(self):
 

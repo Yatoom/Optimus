@@ -1,9 +1,10 @@
+from sklearn.ensemble import AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, ParameterSampler
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
 from optimus.converter import Converter
-from skgarden import RandomForestRegressor, ExtraTreesRegressor
+from extra.forests import RandomForestRegressor, ExtraTreesRegressor
 from optimus.builder import Builder
 from extra.timeout import Timeout
 from extra.fancyprint import say
@@ -116,9 +117,16 @@ class Optimizer:
             return ExtraTreesRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
                                 n_jobs=1, max_depth=20, random_state=random_state)
 
+        def get_adaboost_regressor():
+            return AdaBoostRegressor(n_estimators=50, random_state=random_state)
+
         # Helper function to create Linear Regressor
         def get_linear_regressor():
             return LinearRegression(normalize=True, n_jobs=1)
+
+        def get_gradient_boosting_regressor():
+            return GradientBoostingRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3, max_depth=20,
+                                             random_state=random_state)
 
         # Setup score regressor (for predicting EI)
         if score_regression == "forest":
@@ -140,6 +148,10 @@ class Optimizer:
                 self.time_regressor = get_gaussian_process_regressor()
             elif time_regression == "linear":
                 self.time_regressor = get_linear_regressor()
+            elif time_regression == "gradient":
+                self.time_regressor = get_gradient_boosting_regressor()
+            elif time_regression == "adaboost":
+                self.time_regressor = get_adaboost_regressor()
             else:
                 raise ValueError("The value '{}' is not a valid value for 'time_regression'".format(time_regression))
 

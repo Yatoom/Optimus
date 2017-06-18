@@ -4,7 +4,6 @@ from optimus.model_optimizer import ModelOptimizer
 from vault import model_factory, decoder
 from benchmarks import config
 from enum import Enum
-import numpy as np
 
 
 class Method(Enum):
@@ -15,7 +14,7 @@ class Method(Enum):
 
 
 class Benchmark:
-    def __init__(self, task_id, inner_cv=3, n_iter=200):
+    def __init__(self, task_id, n_iter=200):
         task = openml.tasks.get_task(task_id)
         dataset = task.get_dataset()
         X, y, categorical, names = dataset.get_data(
@@ -34,7 +33,6 @@ class Benchmark:
         self.estimator = estimator
         self.params = params
         self.openml_splits = openml_splits
-        self.inner_cv = inner_cv
         self.n_iter = n_iter
         self.task_id = task_id
         db, table = config.connect()
@@ -56,18 +54,29 @@ class Benchmark:
 
             print("Normal - Forest")
             self.benchmark(method=Method.NORMAL, seed=seed, score_regressor="forest")
-
-            print("EI/s - GP/GP")
-            self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="gp", time_regressor="gp")
-
-            print("EI/s - GP/Linear")
-            self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="gp", time_regressor="linear")
-
-            print("EI/s - Forest/GP")
-            self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest", time_regressor="gp")
+            #
+            # print("EI/s - GP/GP")
+            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="gp", time_regressor="gp")
+            #
+            # print("EI/s - GP/Linear")
+            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="gp", time_regressor="linear")
+            #
+            # print("EI/s - Forest/GP")
+            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest", time_regressor="gp")
 
             print("EI/s - Forest/Linear")
             self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest", time_regressor="linear")
+
+            print("EI/s - Forest/Forest")
+            self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest", time_regressor="forest")
+
+            # print("EI/s - Extra/Extra")
+            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="extra forest",
+            #                time_regressor="extra forest")
+
+            # print("EI/s - Extra/Extra")
+            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest",
+            #                time_regressor="extra forest")
             #
             # print("EI/√s - GP/GP")
             # self.benchmark(method=Method.EI_PER_ROOT_SECOND, seed=seed, score_regressor="gp", time_regressor="gp")
@@ -82,22 +91,23 @@ class Benchmark:
             # self.benchmark(method=Method.EI_PER_ROOT_SECOND, seed=seed, score_regressor="forest", time_regressor="linear")
 
     def benchmark(self, method=Method.RANDOMIZED, score_regressor="gp", time_regressor="gp", seed=0, starting_points=5,
-                  n_iter=500):
+                  verbose=False):
+        n_iter = self.n_iter
         if method == Method.RANDOMIZED:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
-                                       random_search=True, verbose=False)
+                                       random_search=True, verbose=verbose)
         elif method == Method.NORMAL:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
-                                       random_search=False, verbose=False, use_ei_per_second=False,
+                                       random_search=False, verbose=verbose, use_ei_per_second=False,
                                        score_regression=score_regressor)
         elif method == Method.EI_PER_SECOND:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
-                                       random_search=False, verbose=False, use_ei_per_second=True,
+                                       random_search=False, verbose=verbose, use_ei_per_second=True,
                                        use_root_second=False, score_regression=score_regressor,
                                        time_regression=time_regressor)
         elif method == Method.EI_PER_ROOT_SECOND:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
-                                       random_search=False, verbose=False, use_ei_per_second=True,
+                                       random_search=False, verbose=verbose, use_ei_per_second=True,
                                        use_root_second=True, score_regression=score_regressor,
                                        time_regression=time_regressor)
 
