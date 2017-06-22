@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 import matplotlib.pyplot as plt
+
 from benchmarks import config
 
 db, table = config.connect()
@@ -109,11 +110,64 @@ def averaging(numbers):
     return averaged_numbers
 
 
-def get_best_score_at_time(timestep, times, scores):
-    reversed_times = reversed(times)
+def make_time_buckets(time_step, timestamp_key="cumulative_time", score_key="best_score"):
+    df = pd.DataFrame(list(table.find({})))
+    max_time = int(list(table.find({}).sort(timestamp_key, -1).limit(1))[0][timestamp_key])
+    methods = split(df, split_by="method")
+    method_averages = get_method_averages(methods, time_step, max_time, timestamp_key, score_key)
 
-    for index, time in enumerate(reversed_times):
-        if timestep >= time:
-            return scores[-(index + 1)]
 
-    return 0
+
+    return method_averages
+
+
+def split(df, split_by):
+    methods = table.distinct(split_by)
+    frames = []
+    for method in methods:
+        frames.append(df[df[split_by] == method])
+    return frames
+
+
+def get_method_averages(methods, time_step, max_time, timestamp_key, score_key):
+    averages = []
+    for method in methods:
+        tasks = split(method, split_by="task")
+        average = get_task_average(tasks, time_step, max_time, timestamp_key, score_key)
+        averages.append(average)
+
+    return averages
+
+
+def get_task_average(tasks, time_step, max_time, timestamp_key, score_key):
+    scores_per_task = []
+    for task in tasks:
+        seeds = split(task, split_by="seed")
+        seed_average = get_seed_average(seeds, time_step, max_time, timestamp_key, score_key)
+        scores_per_task.append(seed_average)
+
+    return np.average(scores_per_task, axis=0)
+
+
+def get_seed_average(seeds, time_step, max_time, timestamp_key, score_key):
+    scores_per_seed = []
+    for sd in seeds:
+        score_per_step = get_score_per_step(sd, time_step, max_time, timestamp_key, score_key)
+        scores_per_seed.append(score_per_step)
+
+    return np.average(scores_per_seed, axis=0)
+
+
+def get_score_per_step(df, time_step, max_time, timestamp="cumulative_time", score="best_score"):
+    times = np.array(df[timestamp])
+    scores = np.array(df[score])
+    pointer = 0
+    score_per_step = []
+    best_score = 0
+    for time_point in np.arange(0, max_time + time_step, time_step):
+        while pointer < len(times) and times[pointer] <= time_point:
+            best_score = scores[pointer]
+            pointer += 1
+        score_per_step.append(best_score)
+
+    return score_per_step
