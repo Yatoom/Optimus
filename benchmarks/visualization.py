@@ -1,4 +1,3 @@
-# This benchmark needs to be done one a single node.
 import pandas as pd
 import numpy as np
 
@@ -110,13 +109,30 @@ def averaging(numbers):
     return averaged_numbers
 
 
-def make_time_buckets(time_step, timestamp_key="cumulative_time", score_key="best_score"):
+def visualize_benchmark(time_step, timestamp_key="cumulative_time", score_key="best_score", ranked=False,
+                        averaged=False):
+    data = make_time_buckets(time_step, timestamp_key, score_key)
+    print("Plotting...")
+    df = pd.DataFrame(data)
+
+    if ranked:
+        df = df.rank(axis=1)
+
+    if averaged:
+        df = df.apply(lambda x: np.cumsum(x) / np.arange(1, len(x) + 1), axis=0)
+
+    df.plot()
+    plt.show()
+
+
+def make_time_buckets(time_step, timestamp_key, score_key):
+    print("Fetching data...")
     df = pd.DataFrame(list(table.find({})))
     max_time = int(list(table.find({}).sort(timestamp_key, -1).limit(1))[0][timestamp_key])
+
+    print("Reorganizing data...")
     methods = split(df, split_by="method")
     method_averages = get_method_averages(methods, time_step, max_time, timestamp_key, score_key)
-
-
 
     return method_averages
 
@@ -130,11 +146,11 @@ def split(df, split_by):
 
 
 def get_method_averages(methods, time_step, max_time, timestamp_key, score_key):
-    averages = []
+    averages = {}
     for method in methods:
         tasks = split(method, split_by="task")
         average = get_task_average(tasks, time_step, max_time, timestamp_key, score_key)
-        averages.append(average)
+        averages[str(method["method"].iloc[0])] = average
 
     return averages
 
