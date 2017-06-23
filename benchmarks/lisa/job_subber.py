@@ -6,6 +6,17 @@ project_dir = "/home/jhoof/Optimus/"
 config = "#PBS -lwalltime=2:00:00\n#PBS -lnodes=1:cpu3\n"
 
 
+def benchmark_1():
+    OPENML_10 = [12, 14, 16, 20, 22, 28, 32, 41, 45, 58]
+    SEEDS = [2589731706, 2382469894, 3544753667]
+
+    for task in OPENML_10:
+        for seed in SEEDS:
+            create_all_jobs(task, seed)
+
+    sub_jobs()
+
+
 def create_all_jobs(task, seed):
     # Randomized
     create_job(task, 0, seed)
@@ -40,6 +51,7 @@ def create_job(task, method, seed, score_regressor="gp", time_regressor="gp", st
     benchmark_path = project_dir + "benchmark.py"
     f.write("{0} {1} {2} {3} {4} \"{5}\" \"{6}\" {7}".format(python_path, benchmark_path, task, method, seed,
                                                              score_regressor, time_regressor, starting_points))
+
 
 def sub_jobs():
     for i in range(0, get_number_of_jobs()):

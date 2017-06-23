@@ -317,6 +317,7 @@ class Optimizer:
             "evaluation_time": self.evaluation_times,
             "maximize_time": maximize_times,
             "best_score": self.best_scores,
+            "total_time": maximize_times + self.evaluation_times,
             "cumulative_time": np.cumsum(maximize_times) + np.cumsum(self.evaluation_times)
         }
 

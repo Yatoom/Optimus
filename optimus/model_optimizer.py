@@ -189,7 +189,7 @@ class ModelOptimizer(BaseSearchCV):
     def _bayesian_search(self, X, y, n_iter):
         say("Bayesian search with {} iterations".format(n_iter), self.verbose, style="title")
 
-        for i in tqdm(range(0, n_iter), ascii=False, leave=True):
+        for i in tqdm(range(0, n_iter), ascii=True, leave=True):
 
             # Stop loop if we are out of time
             if self._over_time():
@@ -223,7 +223,7 @@ class ModelOptimizer(BaseSearchCV):
         say("Randomized search with {} iterations".format(n_iter), self.verbose, style="title")
         samples = [i for i in ParameterSampler(self.decoded_params, n_iter)]
 
-        for i in tqdm(range(0, n_iter), ascii=False, leave=True):
+        for i in tqdm(range(0, n_iter), ascii=True, leave=True):
 
             # Stop loop if we are out of time
             if self._over_time():
