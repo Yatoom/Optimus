@@ -12,7 +12,7 @@ from optimus_ml.optimizer.optimizer import Optimizer
 
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=150,
+                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=150,
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
                  max_run_time=1500):
         """
