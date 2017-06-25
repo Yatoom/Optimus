@@ -3,8 +3,9 @@ import traceback
 import warnings
 
 import numpy as np
+import pynisher
+
 from optimus_ml.extra.fancyprint import say
-from optimus_ml.extra.timeout import Timeout
 from scipy.stats import norm
 from sklearn.ensemble import AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -238,9 +239,11 @@ class Optimizer:
             best_estimator = Builder.build_pipeline(self.estimator, parameters)
 
             # Evaluate with timeout
-            with Timeout(self.max_eval_time):
-                score = cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv,
-                                        n_jobs=-1)
+            timed_cross_val_score = pynisher.enforce_limits(wall_time_in_s=self.max_eval_time)(cross_val_score)
+            score = timed_cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv, n_jobs=-1)
+
+            if timed_cross_val_score.exit_status != 0:
+                raise TimeoutError
 
         except (GeneratorExit, OSError, TimeoutError):
             say("Timeout error :(", self.verbose)

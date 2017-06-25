@@ -11,6 +11,6 @@ setup(
   keywords=['machine learning', 'automated machine learning'],
   classifiers=[],
   install_requires=[
-    "scipy", "numpy", "pandas", "matplotlib", "tqdm", "sklearn"
+    "scipy", "numpy", "pandas", "matplotlib", "tqdm", "sklearn", "pynisher"
   ]
 )
