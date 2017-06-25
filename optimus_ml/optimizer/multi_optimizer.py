@@ -1,11 +1,13 @@
-from sklearn.model_selection._search import BaseSearchCV
-from optimus.optimizer import Optimizer
-from optimus.converter import Converter
-from optimus.builder import Builder
-from extra.fancyprint import say
-from vault import decoder
-import numpy as np
 import warnings
+
+import numpy as np
+from sklearn.model_selection._search import BaseSearchCV
+from optimus_ml.vault import decoder
+
+from optimus_ml.extra.fancyprint import say
+from optimus_ml.optimizer.builder import Builder
+from optimus_ml.optimizer.converter import Converter
+from optimus_ml.optimizer.optimizer import Optimizer
 
 
 class MultiOptimizer(BaseSearchCV):

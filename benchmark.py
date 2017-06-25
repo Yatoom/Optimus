@@ -1,5 +1,6 @@
-import benchmarks.benchmark as b
 import sys
+
+import benchmarks.benchmark as b
 
 # Example:
 # benchmark.py 145677 2 300 "gp" "gp" 5

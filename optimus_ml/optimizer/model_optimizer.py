@@ -1,17 +1,19 @@
 import time
+
+import numpy as np
 from sklearn.metrics.scorer import check_scoring
 from sklearn.model_selection._search import BaseSearchCV, ParameterSampler
-from optimus.optimizer import Optimizer
-from extra.fancyprint import say
-from vault import decoder
 from tqdm import tqdm
-import numpy as np
+from optimus_ml.vault import decoder
+
+from optimus_ml.extra.fancyprint import say
+from optimus_ml.optimizer.optimizer import Optimizer
 
 
 class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=150,
-                 n_iter=10, refit=True, random_search=False, time_regression="gp", score_regression="gp",
+                 n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
                  max_run_time=1500):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 

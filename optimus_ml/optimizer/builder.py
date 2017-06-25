@@ -18,7 +18,7 @@ class Builder:
         preprocessors = Builder.extract_preprocessors(params)
         estimator = Builder.setup_estimator(base_estimator, params)
 
-        if preprocessors == [None]:
+        if preprocessors is None:
             return estimator
 
         return make_pipeline(*preprocessors, estimator)

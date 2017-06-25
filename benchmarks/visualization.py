@@ -1,7 +1,8 @@
-import pandas as pd
-import numpy as np
+import time
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from benchmarks import config
 
@@ -110,8 +111,8 @@ def averaging(numbers):
 
 
 def visualize_benchmark(time_step, timestamp_key="cumulative_time", score_key="best_score", ranked=False,
-                        averaged=False):
-    data = make_time_buckets(time_step, timestamp_key, score_key)
+                        averaged=False, filter_=None):
+    data = make_time_buckets(time_step, timestamp_key, score_key, filter_=filter_)
     print("Plotting...")
     df = pd.DataFrame(data)
 
@@ -125,10 +126,26 @@ def visualize_benchmark(time_step, timestamp_key="cumulative_time", score_key="b
     plt.show()
 
 
-def make_time_buckets(time_step, timestamp_key, score_key):
-    print("Fetching data...")
-    df = pd.DataFrame(list(table.find({})))
-    max_time = int(list(table.find({}).sort(timestamp_key, -1).limit(1))[0][timestamp_key])
+def make_time_buckets(time_step, timestamp_key, score_key, filter_=None):
+    cursor = table.find(filter_)
+    cursor.batch_size(100000000000000000)
+
+    print("Fetching data...", end=" ")
+    start = time.time()
+    if filter_ is None:
+        filter_ = {}
+    list_ = list(cursor)
+    print(time.time() - start)
+
+    print("Creating dataframe...", end=" ")
+    start = time.time()
+    df = pd.DataFrame(list_)
+    print(time.time() - start)
+
+    print("Determining max time...", end=" ")
+    start = time.time()
+    max_time = int(list(table.find(filter_).sort(timestamp_key, -1).limit(1))[0][timestamp_key])
+    print(time.time() - start)
 
     print("Reorganizing data...")
     methods = split(df, split_by="method")

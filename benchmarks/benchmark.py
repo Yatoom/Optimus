@@ -1,9 +1,10 @@
+from enum import Enum
+
 import openml
 
-from optimus.model_optimizer import ModelOptimizer
-from vault import model_factory, decoder
 from benchmarks import config
-from enum import Enum
+from optimus_ml.optimizer.model_optimizer import ModelOptimizer
+from optimus_ml.vault import model_factory, decoder
 
 
 class Method(Enum):

@@ -1,19 +1,20 @@
-from sklearn.ensemble import AdaBoostRegressor, GradientBoostingRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import cross_val_score, ParameterSampler
-from sklearn.gaussian_process.kernels import ConstantKernel, Matern
-from sklearn.gaussian_process import GaussianProcessRegressor
-from optimus.converter import Converter
-from extra.forests import RandomForestRegressor, ExtraTreesRegressor
-from optimus.builder import Builder
-from extra.timeout import Timeout
-from extra.fancyprint import say
-from scipy.stats import norm
-from sklearn import clone
-import numpy as np
+import time
 import traceback
 import warnings
-import time
+
+import numpy as np
+from optimus_ml.extra.fancyprint import say
+from optimus_ml.extra.timeout import Timeout
+from scipy.stats import norm
+from sklearn.ensemble import AdaBoostRegressor, GradientBoostingRegressor
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import ConstantKernel, Matern
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import cross_val_score, ParameterSampler
+
+from optimus_ml.extra.forests import RandomForestRegressor, ExtraTreesRegressor
+from optimus_ml.optimizer.builder import Builder
+from optimus_ml.optimizer.converter import Converter
 
 warnings.filterwarnings("ignore")
 

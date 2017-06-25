@@ -1,6 +1,7 @@
-from benchmarks import config
-import pandas as pd
 import numpy as np
+import pandas as pd
+
+from benchmarks import config
 
 db, table = config.connect()
 default_seeds = [2589731706, 2382469894, 3544753667]
