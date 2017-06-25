@@ -36,3 +36,11 @@ opt.fit(X, y)
 # Print best parameter setting and corresponding score
 print(opt.best_params_, opt.best_score_)
 ```
+
+## Method comparison
+Below you'll see a comparison of a few different methods that are available. 
+The graph displays average rank over time (in seconds), where lower ranks are better.
+We use different classifiers for estimating the expected improvement (EI) and running time (RT).
+The `EI` value is not calculated with the `RANDOMIZED` method, while the `RT` value is only calculated in the 
+`EI_PER_SECOND` methods, so you can ignore these values in the legend. Also note that we are using `EI/√s` rather than `EI/s`. 
+<img src="http://jeroenvanhoof.nl/benchmark.png"/>
