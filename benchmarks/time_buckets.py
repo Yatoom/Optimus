@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
-
+import matplotlib.pyplot as plt
 from benchmarks import config
 
 db, table = config.connect()
 default_seeds = [2589731706, 2382469894, 3544753667]
 
 
-def plot(scores, ranked=False, averaged=False):
+def plot(scores, ranked=False, averaged=False, x_label="", y_label="", title=""):
     frame = pd.DataFrame(scores)
 
     if ranked:
@@ -16,7 +16,24 @@ def plot(scores, ranked=False, averaged=False):
     if averaged:
         frame = frame.apply(lambda x: np.cumsum(x) / np.arange(1, len(x) + 1), axis=0)
 
-    frame.plot()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    frame.plot(ax=ax)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+    plt.show()
+
+
+def rename(scores):
+    return {
+        "Randomized": scores["RANDOMIZED (EI: gp, RT: gp)"],
+        "Normal (gp)": scores["NORMAL (EI: gp, RT: gp)"],
+        "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
+        "EI/s (forest / extra forest)": scores["EI_PER_SECOND (EI: forest, RT: extra forest)"],
+        "EI/s (forest / forest)": scores["EI_PER_SECOND (EI: forest, RT: forest)"],
+        "EI/s (forest / linear)": scores["EI_PER_SECOND (EI: forest, RT: linear)"],
+        "EI/s (gp / gp)": scores["EI_PER_SECOND (EI: gp, RT: gp)"]
+    }
 
 
 def get_method_average(methods=None, tasks=None, seeds=None, step=1, max_time=None, time_key="cumulative_time",
@@ -36,7 +53,8 @@ def get_method_average(methods=None, tasks=None, seeds=None, step=1, max_time=No
     return method_dict
 
 
-def get_task_average(method, tasks=None, seeds=None, step=1, max_time=1600, time_key="cumulative_time", score_key="best_score"):
+def get_task_average(method, tasks=None, seeds=None, step=1, max_time=1600, time_key="cumulative_time",
+                     score_key="best_score"):
     if tasks is None:
         tasks = table.distinct("task", {"method": method})
 
