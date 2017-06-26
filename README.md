@@ -5,6 +5,11 @@
 # Optimus
 An automated machine learning tool.
 
+## Installation
+```bash
+pip install optimus-ml
+```
+
 ## Example usage
 ```python
 from optimus_ml import ModelOptimizer

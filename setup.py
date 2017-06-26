@@ -1,8 +1,8 @@
 from setuptools import setup
 setup(
   name='optimus_ml',
-  packages=['optimus_ml'],
-  version='0.1',
+  packages=['optimus_ml', 'optimus_ml.extra', 'optimus_ml.optimizer', 'optimus_ml.vault'],
+  version='0.2',
   description='Automated machine learning tool',
   author='Jeroen van Hoof',
   author_email='jeroen@jeroenvanhoof.nl',
