@@ -47,5 +47,7 @@ Below you'll see a comparison of a few different methods that are available.
 The graph displays average rank over time (in seconds), where lower ranks are better.
 We use different classifiers for estimating the expected improvement (EI) and running time (RT).
 The `EI` value is not calculated with the `RANDOMIZED` method, while the `RT` value is only calculated in the 
-`EI_PER_SECOND` methods, so you can ignore these values in the legend. Also note that we are using `EI/√s` rather than `EI/s`. 
+`EI_PER_SECOND` methods, so you can ignore these values in the legend. Also note that we are using `EI/√s` rather than `EI/s`.
+ 
+Each method was executed three times on the following ten Openml tasks: [12](https://www.openml.org/t/12), [14](https://www.openml.org/t/14), [16](https://www.openml.org/t/16), [20](https://www.openml.org/t/20), [22](https://www.openml.org/t/22), [28](https://www.openml.org/t/28), [32](https://www.openml.org/t/32), [41](https://www.openml.org/t/41), [45](https://www.openml.org/t/45) and [58](https://www.openml.org/t/58), using a Random Forest Classifier.
 <img src="http://jeroenvanhoof.nl/benchmark.png"/>
