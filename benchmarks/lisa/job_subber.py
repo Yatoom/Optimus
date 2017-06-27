@@ -18,26 +18,29 @@ def benchmark_1():
 
 
 def create_all_jobs(task, seed):
-    # Randomized
-    create_job(task, 0, seed)
+    # Randomized 2X
+    create_job(task, 4, seed)
 
-    # Normal - GP
-    create_job(task, 1, seed, score_regressor="gp")
-
-    # Normal - Forest
-    create_job(task, 1, seed, score_regressor="forest")
-
-    # EI/s - GP/GP
-    create_job(task, 2, seed, score_regressor="gp", time_regressor="gp")
-
-    # EI/s - Forest / Forest
-    create_job(task, 2, seed, score_regressor="forest", time_regressor="forest")
-
-    # EI/s - Forest / Extra forest
-    create_job(task, 2, seed, score_regressor="forest", time_regressor="extra forest")
-
-    # EI/s - Forest - Linear
-    create_job(task, 2, seed, score_regressor="forest", time_regressor="linear")
+    # # Randomized
+    # create_job(task, 0, seed)
+    #
+    # # Normal - GP
+    # create_job(task, 1, seed, score_regressor="gp")
+    #
+    # # Normal - Forest
+    # create_job(task, 1, seed, score_regressor="forest")
+    #
+    # # EI/s - GP/GP
+    # create_job(task, 2, seed, score_regressor="gp", time_regressor="gp")
+    #
+    # # EI/s - Forest / Forest
+    # create_job(task, 2, seed, score_regressor="forest", time_regressor="forest")
+    #
+    # # EI/s - Forest / Extra forest
+    # create_job(task, 2, seed, score_regressor="forest", time_regressor="extra forest")
+    #
+    # # EI/s - Forest - Linear
+    # create_job(task, 2, seed, score_regressor="forest", time_regressor="linear")
 
 
 def get_number_of_jobs():

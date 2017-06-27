@@ -12,6 +12,7 @@ class Method(Enum):
     NORMAL = 1
     EI_PER_SECOND = 2
     EI_PER_ROOT_SECOND = 3
+    RANDOMIZED_2X = 4
 
 
 class Benchmark:
@@ -111,6 +112,9 @@ class Benchmark:
                                        random_search=False, verbose=verbose, use_ei_per_second=True,
                                        use_root_second=True, score_regression=score_regressor,
                                        time_regression=time_regressor)
+        elif method == Method.RANDOMIZED_2X:
+            optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
+                                       random_search=True, verbose=verbose)
 
         optimizer.inner_cv = self.openml_splits
 

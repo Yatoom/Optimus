@@ -14,7 +14,7 @@ class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=150,
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
-                 max_run_time=1500):
+                 max_run_time=1500, simulate_speedup=1):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -72,12 +72,16 @@ class ModelOptimizer(BaseSearchCV):
 
         max_run_time: int
             Maximum running time in seconds
+
+        simulate_speedup: float
+            Act as if the time is going slower, for benchmark purposes (e.g. to simulate Randomized 2X)
         """
 
         # Call to super
         super().__init__(None, None, None)
 
         # Accept parameters
+        self.simulate_speedup = simulate_speedup
         self.refit = refit
         self.estimator = estimator
         self.encoded_params = encoded_params
@@ -274,4 +278,4 @@ class ModelOptimizer(BaseSearchCV):
                                    max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples,
                                    use_root_second=self.use_root_second, time_regression=self.time_regression,
-                                   score_regression=self.score_regression)
+                                   score_regression=self.score_regression, simulate_speedup=self.simulate_speedup)

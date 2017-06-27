@@ -48,7 +48,8 @@ def get_method_average(methods=None, tasks=None, seeds=None, step=1, max_time=No
     for method in methods:
         task_average = get_task_average(method=method, tasks=tasks, seeds=seeds, step=step, max_time=max_time,
                                         time_key=time_key, score_key=score_key)
-        method_dict[method] = task_average
+        if task_average is not None:
+            method_dict[method] = task_average
 
     return method_dict
 
@@ -62,7 +63,12 @@ def get_task_average(method, tasks=None, seeds=None, step=1, max_time=1600, time
     for task in tasks:
         seed_average = get_seed_average(method=method, task=str(task), seeds=seeds, step=step, max_time=max_time,
                                         time_key=time_key, score_key=score_key)
-        scores_per_task.append(seed_average)
+
+        if seed_average is not None:
+            scores_per_task.append(seed_average)
+
+    if len(scores_per_task) == 0:
+        return None
 
     return np.average(scores_per_task, axis=0)
 
@@ -78,7 +84,11 @@ def get_seed_average(method, task, seeds=None, step=1, max_time=1600, time_key="
     for seed in seeds:
         score_per_step = get_score_per_step(method=method, task=task, seed=seed, step=step, max_time=max_time,
                                             time_key=time_key, score_key=score_key)
-        scores_per_seed.append(score_per_step)
+        if score_per_step is not None:
+            scores_per_seed.append(score_per_step)
+
+    if len(scores_per_seed) == 0:
+        return None
 
     return np.average(scores_per_seed, axis=0)
 
@@ -88,6 +98,12 @@ def get_score_per_step(method, task, seed, step=1, max_time=1600, time_key="cumu
     data = list(cursor)
     times = np.array([i[time_key] for i in data])
     scores = np.array([i[score_key] for i in data])
+
+    if len(times) == 0:
+        return None
+
+    print("method: {}, task: {}, seed: {}, data: {}".format(method, task, seed, len(times)))
+    times, scores = remove_startup_iterations(times, scores, 5, recalculate_time=True)
 
     pointer = 0
     score_per_step = []
@@ -99,3 +115,15 @@ def get_score_per_step(method, task, seed, step=1, max_time=1600, time_key="cumu
         score_per_step.append(best_score)
 
     return score_per_step
+
+
+def remove_startup_iterations(times, scores, nr, recalculate_time=True):
+    startup_time = times[nr - 1]
+    new_times = times[nr:]
+    new_scores = scores[nr:]
+
+    if recalculate_time:
+        for i in range(0, len(new_times)):
+            new_times[i] = new_times[i] - startup_time
+
+    return new_times, new_scores

@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore")
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 time_regression="gp", score_regression="gp", random_state=42):
+                 time_regression="gp", score_regression="gp", random_state=42, simulate_speedup=1):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -71,6 +71,9 @@ class Optimizer:
 
         random_state: int
             Random state for the regressors.
+
+        simulate_speedup: float
+            Act as if the time is going slower, for benchmark purposes (e.g. to simulate Randomized 2X)
         """
 
         # Accept parameters
@@ -84,6 +87,7 @@ class Optimizer:
         self.use_root_second = use_root_second
         self.verbose = verbose
         self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
+        self.simulate_speedup = simulate_speedup
 
         # Setup initial values
         self.validated_scores = []
@@ -195,7 +199,7 @@ class Optimizer:
         best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum, realize)
 
         # Store running time
-        running_time = time.time() - start
+        running_time = (time.time() - start) / self.simulate_speedup
         self.maximize_times.append(running_time)
 
         return best_setting, best_score
@@ -239,7 +243,7 @@ class Optimizer:
             best_estimator = Builder.build_pipeline(self.estimator, parameters)
 
             # Evaluate with timeout
-            timed_cross_val_score = pynisher.enforce_limits(wall_time_in_s=self.max_eval_time)(cross_val_score)
+            timed_cross_val_score = pynisher.enforce_limits(wall_time_in_s=self.max_eval_time * self.simulate_speedup)(cross_val_score)
             score = timed_cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv, n_jobs=-1)
 
             if timed_cross_val_score.exit_status != 0:
@@ -279,7 +283,7 @@ class Optimizer:
         self.current_best_score = max(score, self.current_best_score)
         self.best_scores.append(self.current_best_score)
 
-        running_time = time.time() - start if success else self.max_eval_time
+        running_time = (time.time() - start) / self.simulate_speedup if success else self.max_eval_time
         self.evaluation_times.append(running_time)
         self.current_best_time = min(running_time, self.current_best_time)
 
