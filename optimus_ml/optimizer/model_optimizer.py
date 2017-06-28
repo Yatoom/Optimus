@@ -14,7 +14,8 @@ class ModelOptimizer(BaseSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=150,
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
-                 max_run_time=1500, simulate_speedup=1):
+                 max_run_time=1500, simulate_speedup=1, local_search=True,
+                 ls_max_steps=np.inf):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -75,12 +76,20 @@ class ModelOptimizer(BaseSearchCV):
 
         simulate_speedup: float
             Act as if the time is going slower, for benchmark purposes (e.g. to simulate Randomized 2X)
+
+        local_search: bool
+            Whether to do local search
+
+        ls_max_steps: float
+            Maximum number of steps to do in local search
         """
 
         # Call to super
         super().__init__(None, None, None)
 
         # Accept parameters
+        self.local_search = local_search
+        self.ls_max_steps = ls_max_steps
         self.simulate_speedup = simulate_speedup
         self.refit = refit
         self.estimator = estimator
@@ -278,4 +287,5 @@ class ModelOptimizer(BaseSearchCV):
                                    max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples,
                                    use_root_second=self.use_root_second, time_regression=self.time_regression,
-                                   score_regression=self.score_regression, simulate_speedup=self.simulate_speedup)
+                                   score_regression=self.score_regression, simulate_speedup=self.simulate_speedup,
+                                   local_search=self.local_search, ls_max_steps=self.ls_max_steps)

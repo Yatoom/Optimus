@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 import pynisher
+import copy
 
 from optimus_ml.extra.fancyprint import say
 from scipy.stats import norm
@@ -23,7 +24,8 @@ warnings.filterwarnings("ignore")
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 time_regression="gp", score_regression="gp", random_state=42, simulate_speedup=1):
+                 time_regression="gp", score_regression="gp", random_state=42, simulate_speedup=1, local_search=True,
+                 ls_max_steps=np.inf):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -74,6 +76,12 @@ class Optimizer:
 
         simulate_speedup: float
             Act as if the time is going slower, for benchmark purposes (e.g. to simulate Randomized 2X)
+
+        local_search: bool
+            Whether to do local search
+
+        ls_max_steps: float
+            Maximum number of steps to do in local search
         """
 
         # Accept parameters
@@ -88,6 +96,8 @@ class Optimizer:
         self.verbose = verbose
         self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
         self.simulate_speedup = simulate_speedup
+        self.ls_max_steps = ls_max_steps
+        self.local_search = local_search
 
         # Setup initial values
         self.validated_scores = []
@@ -196,7 +206,14 @@ class Optimizer:
             score_optimum = self.current_best_score
 
         # Determine the best parameters
-        best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum, realize)
+        best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
+
+        if self.local_search:
+            best_setting, best_score = self._local_search(best_setting, best_score, score_optimum,
+                                                          max_steps=self.ls_max_steps)
+
+        if realize:
+            best_setting, best_score = self._realize(best_setting, best_score, score_optimum)
 
         # Store running time
         running_time = (time.time() - start) / self.simulate_speedup
@@ -364,7 +381,7 @@ class Optimizer:
             result *= len(i)
         return result
 
-    def _maximize_on_sample(self, sampled_params, score_optimum, realize):
+    def _maximize_on_sample(self, sampled_params, score_optimum):
         """
         Finds the next best setting to evaluate from a set of samples. 
         
@@ -375,9 +392,6 @@ class Optimizer:
             
         score_optimum: float
             The score optimum value to pass to the EI formula
-
-        realize: bool
-            Whether or not to give a more realistic estimate of the EI
 
         Returns
         -------
@@ -413,10 +427,43 @@ class Optimizer:
         best_score = scores[best_index]
         best_setting = sampled_params_list[best_index]
 
-        if realize:
-            best_score = self._realize(best_setting, best_score, score_optimum)
-
         return best_setting, best_score
+
+    def _local_search(self, best_setting, best_score, score_optimum, max_steps=np.inf):
+        n_steps = 0
+
+        while n_steps <= max_steps:
+            neighbors = self._get_neighbors(best_setting)
+            try:
+                new_setting, new_score = self._maximize_on_sample(neighbors, score_optimum)
+            except ValueError:
+                print(neighbors)
+            if new_score > best_score:
+                best_score = new_score
+                best_setting = new_setting
+            else:
+                break
+
+            n_steps += 1
+
+        # print("{} local search steps".format(n_steps))
+        return new_setting, new_score
+
+    def _get_neighbors(self, setting):
+        neighbors = []
+        params = self.param_distributions
+
+        for key, value in setting.items():
+            possible_values = params[key]
+            neighbor = copy.copy(setting)
+
+            for val in possible_values:
+                if val == value:
+                    continue
+                neighbor[key] = val
+                neighbors.append(copy.copy(neighbor))
+
+        return neighbors
 
     def _realize(self, best_setting, original, score_optimum):
         """
