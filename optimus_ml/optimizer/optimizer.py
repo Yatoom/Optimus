@@ -3,8 +3,10 @@ import traceback
 import warnings
 
 import numpy as np
-import pynisher
 import copy
+import os
+if os.name == "nt":
+    import pynisher
 
 from optimus_ml.extra.fancyprint import say
 from scipy.stats import norm
@@ -15,6 +17,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, ParameterSampler
 
 from optimus_ml.extra.forests import RandomForestRegressor, ExtraTreesRegressor
+from optimus_ml.extra.timeout import Timeout
 from optimus_ml.optimizer.builder import Builder
 from optimus_ml.optimizer.converter import Converter
 
@@ -259,14 +262,23 @@ class Optimizer:
             # Build the estimator
             best_estimator = Builder.build_pipeline(self.estimator, parameters)
 
-            # Evaluate with timeout
-            timed_cross_val_score = pynisher.enforce_limits(wall_time_in_s=self.max_eval_time * self.simulate_speedup)(cross_val_score)
-            score = timed_cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv, n_jobs=-1)
+            # Evaluate with timeout (Windows)
+            if os.name == "nt":
+                timed_cross_val_score = pynisher.enforce_limits(
+                    wall_time_in_s=self.max_eval_time * self.simulate_speedup)(cross_val_score)
+                score = timed_cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring,
+                                              cv=self.inner_cv, n_jobs=-1)
 
-            if timed_cross_val_score.exit_status != 0:
-                raise TimeoutError
+                if timed_cross_val_score.exit_status != 0:
+                    raise TimeoutError
 
-        except (GeneratorExit, OSError, TimeoutError):
+            # Evaluate with timeout (Linux)
+            else:
+                with Timeout(self.max_eval_time):
+                    score = cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv,
+                                            n_jobs=-1)
+
+        except (GeneratorExit, OSError, TimeoutError, BrokenPipeError):
             say("Timeout error :(", self.verbose)
             success = False
             score = [self.timeout_score]
