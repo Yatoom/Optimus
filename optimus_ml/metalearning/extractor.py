@@ -6,9 +6,11 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_score, cross_val_predict
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import DecisionTreeClassifier
 
+from optimus_ml.extra.dual_imputer import DualImputer
 from optimus_ml.extra.stopwatch import Stopwatch
 
 
@@ -23,11 +25,11 @@ class Extractor:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(asyncio.gather(
             Extractor.simple_stats(X, categorical),
-            Extractor.landmark_knn(X, y, cv),
-            Extractor.landmark_naive_bayes(X, y, cv),
-            Extractor.landmark_decision_tree(X, y, cv, depth=1),
-            Extractor.landmark_decision_tree(X, y, cv, depth=2),
-            Extractor.landmark_decision_tree(X, y, cv, depth=3),
+            Extractor.landmark_knn(X, y, cv, categorical),
+            Extractor.landmark_naive_bayes(X, y, cv, categorical),
+            Extractor.landmark_decision_tree(X, y, cv, categorical, depth=1),
+            Extractor.landmark_decision_tree(X, y, cv, categorical, depth=2),
+            Extractor.landmark_decision_tree(X, y, cv, categorical, depth=3),
             Extractor.kurtoses(X, categorical),
             Extractor.skewnesses(X, categorical),
             Extractor.missing_values(X),
@@ -83,31 +85,37 @@ class Extractor:
         Extractor.result["skews std"] = np.nanstd(skews)
 
     @staticmethod
-    async def landmark(estimator, X, y, cv):
+    async def landmark(estimator, X, y, cv, categorical, name=None):
+
+        pipeline = make_pipeline(DualImputer(categorical=categorical), estimator)
+
         with Stopwatch() as sw:
-            y_pred = cross_val_predict(estimator=estimator, X=X, y=y, cv=cv, n_jobs=-1)
+            y_pred = cross_val_predict(estimator=pipeline, X=X, y=y, cv=cv, n_jobs=-1)
+
         accuracy = accuracy_score(y, y_pred)
         f1 = f1_score(y, y_pred, average="weighted")
-        name = type(estimator).__name__
+
+        if name is None:
+            name = type(estimator).__name__
 
         Extractor.result["{} time".format(name)] = sw.duration
         Extractor.result["{} accuracy".format(name)] = accuracy
         Extractor.result["{} f1".format(name)] = f1
 
     @staticmethod
-    async def landmark_naive_bayes(X, y, cv):
+    async def landmark_naive_bayes(X, y, cv, categorical):
         clf = GaussianNB()
-        await Extractor.landmark(clf, X, y, cv)
+        await Extractor.landmark(clf, X, y, cv, categorical)
 
     @staticmethod
-    async def landmark_decision_tree(X, y, cv, depth=1):
+    async def landmark_decision_tree(X, y, cv, categorical, depth=1):
         clf = DecisionTreeClassifier(max_depth=depth)
-        await Extractor.landmark(clf, X, y, cv)
+        await Extractor.landmark(clf, X, y, cv, categorical, name="{} depth {}".format(type(clf).__name__, depth))
 
     @staticmethod
-    async def landmark_knn(X, y, cv):
+    async def landmark_knn(X, y, cv, categorical):
         clf = KNeighborsClassifier(n_neighbors=1, n_jobs=-1)
-        await Extractor.landmark(clf, X, y, cv)
+        await Extractor.landmark(clf, X, y, cv, categorical)
 
     @staticmethod
     async def classes(y):
