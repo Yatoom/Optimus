@@ -1,3 +1,5 @@
+import asyncio
+
 from scipy import stats
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
@@ -11,75 +13,46 @@ from optimus_ml.extra.stopwatch import Stopwatch
 
 
 class Extractor:
+
+    result = {}
+
     @staticmethod
     def calculate(X, y, categorical, cv=10):
 
-        # Calculate stuff that others depend on
-        classes = LabelEncoder().fit_transform(y)
-        class_occurrences = np.bincount(classes)
-        missing = Extractor.missing_values(X)
-        kurtoses = Extractor.kurtoses(X, categorical)
-        skewnesses = Extractor.skewnesses(X, categorical)
-        dt_time_depth1, dt_accuracy_depth1, dt_f1_depth1 = Extractor.landmark_decision_tree(X, y, cv, depth=1)
-        dt_time_depth2, dt_accuracy_depth2, dt_f1_depth2 = Extractor.landmark_decision_tree(X, y, cv, depth=2)
-        dt_time_depth3, dt_accuracy_depth3, dt_f1_depth3 = Extractor.landmark_decision_tree(X, y, cv, depth=3)
-        nb_time, nb_accuracy, nb_f1 = Extractor.landmark_naive_bayes(X, y, cv)
-        knn_time, knn_accuracy, knn_f1 = Extractor.landmark_knn(X, y, cv)
-
-        return {
-            "instances": X.shape[0],
-            "features": X.shape[1],
-            "classes": len(class_occurrences),
-            "instances with missing values": Extractor.num_instances_with_missing(missing),
-            "features with missing values": Extractor.num_features_with_missing(missing),
-            "class size min": np.min(class_occurrences),
-            "class size max": np.max(class_occurrences),
-            "class size mean": np.mean(class_occurrences),
-            "class size std": np.std(class_occurrences),
-            "categorical ratio": np.sum(categorical) / len(categorical),
-            "kurtosis min": np.nanmin(kurtoses),
-            "kurtosis max": np.nanmax(kurtoses),
-            "kurtosis mean": np.nanmean(kurtoses),
-            "kurtosis std": np.nanstd(kurtoses),
-            "skewness min": np.nanmin(skewnesses),
-            "skewness max": np.nanmax(skewnesses),
-            "skewness mean": np.nanmean(skewnesses),
-            "skewness std": np.nanstd(skewnesses),
-            "decision tree time depth 1": dt_time_depth1,
-            "decision tree accuracy depth 1": dt_accuracy_depth1,
-            "decision tree f1 depth 1": dt_f1_depth1,
-            "decision tree time depth 2": dt_time_depth2,
-            "decision tree accuracy depth 2": dt_accuracy_depth2,
-            "decision tree f1 depth 2": dt_f1_depth2,
-            "decision tree time depth 3": dt_time_depth3,
-            "decision tree accuracy depth 3": dt_accuracy_depth3,
-            "decision tree f1 depth 3": dt_f1_depth3,
-            "naive bayes time": nb_time,
-            "naive bayes accuracy": nb_accuracy,
-            "naive bayes f1": nb_f1,
-            "knn time": knn_time,
-            "knn accuracy": knn_accuracy,
-            "knn f1": knn_f1
-        }
+        # Calculate stuff in parallel that others depend on
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.gather(
+            Extractor.simple_stats(X, categorical),
+            Extractor.landmark_knn(X, y, cv),
+            Extractor.landmark_naive_bayes(X, y, cv),
+            Extractor.landmark_decision_tree(X, y, cv, depth=1),
+            Extractor.landmark_decision_tree(X, y, cv, depth=2),
+            Extractor.landmark_decision_tree(X, y, cv, depth=3),
+            Extractor.kurtoses(X, categorical),
+            Extractor.skewnesses(X, categorical),
+            Extractor.missing_values(X),
+            Extractor.classes(y)
+        ))
+        loop.close()
+        return Extractor.result
 
     @staticmethod
-    def missing_values(X):
-        return ~np.isfinite(X)
+    async def simple_stats(X, categorical):
+        Extractor.result["instances"] = X.shape[0]
+        Extractor.result["features"] = X.shape[1]
+        Extractor.result["categorical ratio"] = np.sum(categorical) / len(categorical)
 
     @staticmethod
-    def num_instances_with_missing(missing):
-        num_missing = missing.sum(axis=1)
-        bin_missing = [1 if num > 0 else 0 for num in num_missing]
-        return float(np.sum(bin_missing))
+    async def missing_values(X):
+        missing = ~np.isfinite(X)
+        num_missing_per_instance = missing.sum(axis=1)
+        num_missing_per_feature = missing.sum(axis=0)
+
+        Extractor.result["number of instances with missing"] = np.sum(np.count_nonzero(num_missing_per_instance))
+        Extractor.result["number of features with missing"] = np.sum(np.count_nonzero(num_missing_per_feature))
 
     @staticmethod
-    def num_features_with_missing(missing):
-        num_missing = missing.sum(axis=0)
-        bin_missing = [1 if num > 0 else 0 for num in num_missing]
-        return float(np.sum(bin_missing))
-
-    @staticmethod
-    def kurtoses(X, categorical):
+    async def kurtoses(X, categorical):
         if np.array(categorical).all():
             return [0]
 
@@ -87,10 +60,14 @@ class Extractor:
         for i in range(X.shape[1]):
             if not categorical[i]:
                 kurts.append(stats.kurtosis(X[:, i]))
-        return kurts
+
+        Extractor.result["kurtosis min"] = np.nanmin(kurts)
+        Extractor.result["kurtosis max"] = np.nanmax(kurts)
+        Extractor.result["kurtosis mean"] = np.nanmean(kurts)
+        Extractor.result["kurtosis std"] = np.nanstd(kurts)
 
     @staticmethod
-    def skewnesses(X, categorical):
+    async def skewnesses(X, categorical):
         if np.array(categorical).all():
             return [0]
 
@@ -98,31 +75,46 @@ class Extractor:
         for i in range(X.shape[1]):
             if not categorical[i]:
                 skews.append(stats.skew(X[:, i]))
-        return skews
+
+        # Extractor.result["skews"] = skews
+        Extractor.result["skews min"] = np.nanmin(skews)
+        Extractor.result["skews max"] = np.nanmax(skews)
+        Extractor.result["skews mean"] = np.nanmean(skews)
+        Extractor.result["skews std"] = np.nanstd(skews)
 
     @staticmethod
-    def landmark(estimator, X, y, cv):
+    async def landmark(estimator, X, y, cv):
         with Stopwatch() as sw:
             y_pred = cross_val_predict(estimator=estimator, X=X, y=y, cv=cv, n_jobs=-1)
         accuracy = accuracy_score(y, y_pred)
         f1 = f1_score(y, y_pred, average="weighted")
+        name = type(estimator).__name__
 
-        return sw.duration, accuracy, f1
+        Extractor.result["{} time".format(name)] = sw.duration
+        Extractor.result["{} accuracy".format(name)] = accuracy
+        Extractor.result["{} f1".format(name)] = f1
 
     @staticmethod
-    def landmark_naive_bayes(X, y, cv):
+    async def landmark_naive_bayes(X, y, cv):
         clf = GaussianNB()
-        duration, accuracy, f1 = Extractor.landmark(clf, X, y, cv)
-        return duration, accuracy, f1
+        await Extractor.landmark(clf, X, y, cv)
 
     @staticmethod
-    def landmark_decision_tree(X, y, cv, depth=1):
+    async def landmark_decision_tree(X, y, cv, depth=1):
         clf = DecisionTreeClassifier(max_depth=depth)
-        duration, accuracy, f1 = Extractor.landmark(clf, X, y, cv)
-        return duration, accuracy, f1
+        await Extractor.landmark(clf, X, y, cv)
 
     @staticmethod
-    def landmark_knn(X, y, cv):
+    async def landmark_knn(X, y, cv):
         clf = KNeighborsClassifier(n_neighbors=1, n_jobs=-1)
-        duration, accuracy, f1 = Extractor.landmark(clf, X, y, cv)
-        return duration, accuracy, f1
+        await Extractor.landmark(clf, X, y, cv)
+
+    @staticmethod
+    async def classes(y):
+        classes = LabelEncoder().fit_transform(y)
+        occurrences = np.bincount(classes)
+        Extractor.result["number of classes"] = len(occurrences)
+        Extractor.result["class size mean"] = np.nanmean(occurrences)
+        Extractor.result["class size min"] = np.nanmin(occurrences)
+        Extractor.result["class size max"] = np.nanmax(occurrences)
+        Extractor.result["class size std"] = np.nanstd(occurrences)
