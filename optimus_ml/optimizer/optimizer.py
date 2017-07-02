@@ -278,7 +278,7 @@ class Optimizer:
                     score = cross_val_score(estimator=best_estimator, X=X, y=y, scoring=self.scoring, cv=self.inner_cv,
                                             n_jobs=-1)
 
-        except (GeneratorExit, OSError, TimeoutError, BrokenPipeError):
+        except (GeneratorExit, OSError, TimeoutError, BrokenPipeError, ImportError):
             say("Timeout error :(", self.verbose)
             success = False
             score = [self.timeout_score]
