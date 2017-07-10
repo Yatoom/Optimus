@@ -104,7 +104,7 @@ class ModelOptimizer(BaseSearchCV):
         self.random_search = random_search
         self.time_regression = time_regression
         self.score_regression = score_regression
-        self.max_run_time = max_run_time
+        self.max_run_time = max_run_time * self.simulate_speedup
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -147,6 +147,10 @@ class ModelOptimizer(BaseSearchCV):
 
         # Store results
         self.cv_results_, self.best_index_, self.best_estimator_ = self.optimizer.create_cv_results()
+        self.cv_results_["evaluation_time"] = np.array(self.cv_results_["evaluation_time"]) / self.simulate_speedup
+        self.cv_results_["maximize_time"] = np.array(self.cv_results_["maximize_time"]) / self.simulate_speedup
+        self.cv_results_["total_time"] = np.array(self.cv_results_["total_time"]) / self.simulate_speedup
+        self.cv_results_["cumulative_time"] = np.array(self.cv_results_["cumulative_time"]) / self.simulate_speedup
 
         # Refit the best estimator on the whole dataset
         if self.refit:
@@ -284,8 +288,9 @@ class ModelOptimizer(BaseSearchCV):
         # Setup optimizer
         self.optimizer = Optimizer(estimator=self.estimator, param_distributions=self.decoded_params,
                                    inner_cv=self.inner_cv, scoring=self.scoring, timeout_score=self.timeout_score,
-                                   max_eval_time=self.max_eval_time, use_ei_per_second=self.use_ei_per_second,
+                                   max_eval_time=int(self.max_eval_time * self.simulate_speedup),
+                                   use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples,
                                    use_root_second=self.use_root_second, time_regression=self.time_regression,
-                                   score_regression=self.score_regression, simulate_speedup=self.simulate_speedup,
+                                   score_regression=self.score_regression,
                                    local_search=self.local_search, ls_max_steps=self.ls_max_steps)
