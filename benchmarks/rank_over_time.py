@@ -5,24 +5,24 @@ from benchmarks import config
 
 db, table = config.connect()
 default_seeds = [2589731706, 2382469894, 3544753667]
-
+default_tasks = [12, 14, 16, 20, 22, 28, 32, 45, 58]
 
 def multiplot():
     # Ranking
-    scores = get_method_ranking(seeds=default_seeds, max_time=1500)
+    scores = get_method_ranking(seeds=default_seeds, max_time=1500, tasks=default_tasks)
     plot(rename(scores), y_label="mean of method ranking over different tasks", x_label="time(s)",
          title="Comparison of different classifiers for calculating expected improvement and expected running time.")
 
     # Speed (iterations over time)
-    scores = get_method_ranking(seeds=default_seeds, max_time=1500, score_key="iteration")
+    scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="iteration", tasks=default_tasks)
     plot(rename(scores), y_label="iterations", x_label="time(s)", title="Speed of different methods")
 
     # Evaluation time
-    scores = get_method_ranking(seeds=default_seeds, max_time=1500, score_key="evaluation_time")
+    scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="evaluation_time", tasks=default_tasks)
     plot(rename(scores), y_label="iterations", x_label="time(s)", title="Evaluation time of different methods")
 
     # Maximize time
-    scores = get_method_ranking(seeds=default_seeds, max_time=1500, score_key="maximize_time")
+    scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="maximize_time", tasks=default_tasks)
     plot(rename(scores), y_label="iterations", x_label="time(s)", title="Maximization time of different methods")
 
 
@@ -43,6 +43,7 @@ def plot(scores, averaged=False, x_label="", y_label="", title=""):
 def rename(scores):
     return {
         "Randomized": scores["RANDOMIZED (EI: gp, RT: gp)"],
+        "Randomized 2X": scores["RANDOMIZED_2X (EI: gp, RT: gp)"],
         "Normal (gp)": scores["NORMAL (EI: gp, RT: gp)"],
         "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
         "EI/s (forest / extra forest)": scores["EI_PER_SECOND (EI: forest, RT: extra forest)"],
@@ -59,7 +60,7 @@ def get_method_average(methods=None, tasks=None, seeds=None, step=1, max_time=No
     if methods is None:
         methods = table.distinct("method")
 
-    methods.remove("RANDOMIZED_2X (EI: gp, RT: gp)")
+    # methods.remove("RANDOMIZED_2X (EI: gp, RT: gp)")
 
     if max_time is None:
         max_time = list(table.find({}).sort(time_key, -1).limit(1))[0][time_key]
@@ -81,7 +82,7 @@ def get_method_ranking(methods=None, tasks=None, seeds=None, step=1, max_time=No
     if methods is None:
         methods = table.distinct("method")
 
-    methods.remove("RANDOMIZED_2X (EI: gp, RT: gp)")
+    # methods.remove("RANDOMIZED_2X (EI: gp, RT: gp)")
 
     if max_time is None:
         max_time = list(table.find({}).sort(time_key, -1).limit(1))[0][time_key]
