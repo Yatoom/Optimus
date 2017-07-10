@@ -7,11 +7,8 @@ db, table = config.connect()
 default_seeds = [2589731706, 2382469894, 3544753667]
 
 
-def plot(scores, ranked=False, averaged=False, x_label="", y_label="", title=""):
+def plot(scores, averaged=False, x_label="", y_label="", title=""):
     frame = pd.DataFrame(scores)
-
-    if ranked:
-        frame = frame.rank(axis=1, ascending=False)
 
     if averaged:
         frame = frame.apply(lambda x: np.cumsum(x) / np.arange(1, len(x) + 1), axis=0)
@@ -36,26 +33,46 @@ def rename(scores):
     }
 
 
-def get_method_average(methods=None, tasks=None, seeds=None, step=1, max_time=None, time_key="cumulative_time",
-                       score_key="best_score"):
+def get_method_ranking(methods=None, tasks=None, seeds=None, step=1, max_time=None, time_key="cumulative_time",
+                       score_key="best_score", ranked=False):
+    method_task_scores = {}
+
     if methods is None:
         methods = table.distinct("method")
+
+    methods.remove("RANDOMIZED_2X (EI: gp, RT: gp)")
 
     if max_time is None:
         max_time = list(table.find({}).sort(time_key, -1).limit(1))[0][time_key]
 
-    method_dict = {}
     for method in methods:
-        task_average = get_task_average(method=method, tasks=tasks, seeds=seeds, step=step, max_time=max_time,
-                                        time_key=time_key, score_key=score_key)
-        if task_average is not None:
-            method_dict[method] = task_average
+        scores_per_task = get_scores_per_task(method=method, tasks=tasks, seeds=seeds, step=step, max_time=max_time,
+                                              time_key=time_key, score_key=score_key)
 
-    return method_dict
+        if scores_per_task is not None:
+            method_task_scores[method] = scores_per_task
+
+    first_key = list(method_task_scores.keys())[0]
+    n_tasks = len(method_task_scores[first_key])
+    ranks = {method: [] for method in methods}
+
+    for i in range(0, n_tasks):
+        single_task_scores = {method: method_task_scores[method][i] for method in methods}
+        ranked = pd.DataFrame(single_task_scores).rank(axis=1, ascending=False)
+        ranked_dict = ranked.to_dict(orient="list")
+        for key, values in ranked_dict.items():
+            ranks[key].append(values)
+
+    avg = {method: [] for method in methods}
+    for method, tasks in ranks.items():
+        avg[method] = np.average(tasks, axis=0)
+
+    return avg
 
 
-def get_task_average(method, tasks=None, seeds=None, step=1, max_time=1600, time_key="cumulative_time",
-                     score_key="best_score"):
+# The average over the tasks will form the method score
+def get_scores_per_task(method, tasks=None, seeds=None, step=1, max_time=1600, time_key="cumulative_time",
+                        score_key="best_score"):
     if tasks is None:
         tasks = table.distinct("task", {"method": method})
 
@@ -70,9 +87,10 @@ def get_task_average(method, tasks=None, seeds=None, step=1, max_time=1600, time
     if len(scores_per_task) == 0:
         return None
 
-    return np.average(scores_per_task, axis=0)
+    return scores_per_task
 
 
+# The average over the seeds will form the task score
 def get_seed_average(method, task, seeds=None, step=1, max_time=1600, time_key="cumulative_time",
                      score_key="best_score"):
     if seeds is None:
