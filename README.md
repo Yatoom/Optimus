@@ -53,7 +53,7 @@ The maximization time is defined as the time to find a setting with the highest 
 is defined as the time it takes to evaluate a setting.
  
 Each method was executed three times on the following ten Openml tasks: [12](https://www.openml.org/t/12), [14](https://www.openml.org/t/14), [16](https://www.openml.org/t/16), [20](https://www.openml.org/t/20), [22](https://www.openml.org/t/22), [28](https://www.openml.org/t/28), [32](https://www.openml.org/t/32), [41](https://www.openml.org/t/41), [45](https://www.openml.org/t/45) and [58](https://www.openml.org/t/58), using a Random Forest Classifier. For a better comparison of the different methods, each method is pre-seeded with the same knowledge about five hyper parameter settings.
-<img src="http://jeroenvanhoof.nl/optimus/ranking-r2.png"/>
-<img src="http://jeroenvanhoof.nl/optimus/speed-r2.png"/>
-<img src="http://jeroenvanhoof.nl/optimus/evaluation time-r2.png"/>
-<img src="http://jeroenvanhoof.nl/optimus/maximization time-r2.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/ranking-r3.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/speed-r3.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/evaluation time-r3.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/maximization time-r3.png"/>
