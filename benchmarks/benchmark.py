@@ -114,7 +114,7 @@ class Benchmark:
                                        time_regression=time_regressor)
         elif method == Method.RANDOMIZED_2X:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
-                                       random_search=True, verbose=verbose)
+                                       random_search=True, verbose=verbose, simulate_speedup=2)
 
         optimizer.inner_cv = self.openml_splits
 
