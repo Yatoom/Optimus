@@ -47,7 +47,13 @@ Below you'll see a comparison of a few different methods that are available.
 The graph displays average rank over time (in seconds), where lower ranks are better.
 We use different classifiers for estimating the expected improvement (EI) and running time.
 The expected improvement is not calculated when doing a Randomized Search, and the running time is only calculated in the 
-`EI/s` methods.
+`EI/s` methods. 
+
+The maximization time is defined as the time to find a setting with the highest EI. The evaluation time 
+is defined as the time it takes to evaluate a setting.
  
 Each method was executed three times on the following ten Openml tasks: [12](https://www.openml.org/t/12), [14](https://www.openml.org/t/14), [16](https://www.openml.org/t/16), [20](https://www.openml.org/t/20), [22](https://www.openml.org/t/22), [28](https://www.openml.org/t/28), [32](https://www.openml.org/t/32), [41](https://www.openml.org/t/41), [45](https://www.openml.org/t/45) and [58](https://www.openml.org/t/58), using a Random Forest Classifier. For a better comparison of the different methods, each method is pre-seeded with the same knowledge about five hyper parameter settings.
-<img src="http://jeroenvanhoof.nl/optimus/comparison.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/ranking.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/speed.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/evaluation time.png"/>
+<img src="http://jeroenvanhoof.nl/optimus/maximization time.png"/>

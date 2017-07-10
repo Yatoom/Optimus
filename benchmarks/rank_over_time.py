@@ -7,6 +7,25 @@ db, table = config.connect()
 default_seeds = [2589731706, 2382469894, 3544753667]
 
 
+def multiplot():
+    # Ranking
+    scores = get_method_ranking(seeds=default_seeds, max_time=1500)
+    plot(rename(scores), y_label="mean of method ranking over different tasks", x_label="time(s)",
+         title="Comparison of different classifiers for calculating expected improvement and expected running time.")
+
+    # Speed (iterations over time)
+    scores = get_method_ranking(seeds=default_seeds, max_time=1500, score_key="iteration")
+    plot(rename(scores), y_label="iterations", x_label="time(s)", title="Speed of different methods")
+
+    # Evaluation time
+    scores = get_method_ranking(seeds=default_seeds, max_time=1500, score_key="evaluation_time")
+    plot(rename(scores), y_label="iterations", x_label="time(s)", title="Evaluation time of different methods")
+
+    # Maximize time
+    scores = get_method_ranking(seeds=default_seeds, max_time=1500, score_key="maximize_time")
+    plot(rename(scores), y_label="iterations", x_label="time(s)", title="Maximization time of different methods")
+
+
 def plot(scores, averaged=False, x_label="", y_label="", title=""):
     frame = pd.DataFrame(scores)
 
@@ -33,8 +52,30 @@ def rename(scores):
     }
 
 
+def get_method_average(methods=None, tasks=None, seeds=None, step=1, max_time=None, time_key="cumulative_time",
+                       score_key="best_score"):
+    method_task_averages = {}
+
+    if methods is None:
+        methods = table.distinct("method")
+
+    methods.remove("RANDOMIZED_2X (EI: gp, RT: gp)")
+
+    if max_time is None:
+        max_time = list(table.find({}).sort(time_key, -1).limit(1))[0][time_key]
+
+    for method in methods:
+        scores_per_task = get_scores_per_task(method=method, tasks=tasks, seeds=seeds, step=step, max_time=max_time,
+                                              time_key=time_key, score_key=score_key)
+
+        if scores_per_task is not None:
+            method_task_averages[method] = np.average(scores_per_task, axis=0)
+
+    return method_task_averages
+
+
 def get_method_ranking(methods=None, tasks=None, seeds=None, step=1, max_time=None, time_key="cumulative_time",
-                       score_key="best_score", ranked=False):
+                       score_key="best_score"):
     method_task_scores = {}
 
     if methods is None:
