@@ -51,6 +51,50 @@ def reconstruct_grid(o):
     return converted
 
 
+def settings_to_json(settings):
+    """
+    Make settings JSON serializable.
+
+    Parameters
+    ----------
+    settings: list
+        The settings to convert
+
+    Returns
+    -------
+    The converted settings
+    """
+
+    result = []
+
+    for setting in settings:
+        result.append(setting_to_json(setting))
+
+    return result
+
+
+def reconstruct_settings(o):
+    """
+    Reconstruct settings from JSON serializable object.
+
+    Parameters
+    ----------
+    o: list
+         The object from which to reconstruct
+
+    Returns
+    -------
+    The reconstructed settings
+    """
+
+    result = []
+
+    for setting in o:
+        result.append(reconstruct_setting(setting))
+
+    return result
+
+
 def setting_to_json(setting):
     """
     Make a setting JSON serializable.
@@ -91,6 +135,16 @@ def reconstruct_setting(o):
         converted[key] = _reconstruct_value(value)
 
     return converted
+
+
+def settings_to_indices(settings, param_distributions, robust=False):
+    result = []
+    for setting in settings:
+        if robust:
+            result.append(setting_to_indices_robust(setting, param_distributions))
+        else:
+            result.append(setting_to_indices(setting, param_distributions))
+    return result
 
 
 def setting_to_indices(setting, param_distributions):
@@ -186,6 +240,76 @@ def setting_to_indices_robust(setting, param_distributions):
             result.append(index)
 
     return result
+
+
+def dictionary_to_readable_dictionary(dictionary):
+    """
+    For each key, convert its value to a readable format.
+
+    Parameters
+    ----------
+    dictionary: dict
+        The dictionary to make readable
+
+    Returns
+    -------
+    The dictionary with human-readable values.
+    """
+    dictionary_copy = copy.copy(dictionary)
+
+    for key, item in dictionary.items():
+        dictionary_copy[key] = value_to_readable(item)
+
+    return dictionary_copy
+
+
+def dictionary_to_string(dictionary):
+    """
+    Convert a dictionary to a string representation.
+
+    Parameters
+    ----------
+    dictionary: dict
+        The dictionary to make readable
+
+    Returns
+    -------
+    A string representation of the dictionary
+    """
+
+    printable = ""
+
+    for key, value in dictionary.items():
+        printable += str(key) + " = " + str(value_to_readable(value)) + ", "
+
+    return printable[:-2]
+
+
+def value_to_readable(value):
+    """
+    Makes a value more readable for humans by converting objects to names.
+
+    Parameters
+    ----------
+    value: any type
+        The value to convert
+
+    Returns
+    -------
+    The original int, float, str, bool, np.float64 or NoneType, or the name of the value otherwise, and in
+    case of a list or tuple, it will return a list with converted values.
+    """
+
+    if isinstance(value, (str, int, float, bool, np.int_, np.float)):
+        return value
+
+    elif isinstance(value, (list, tuple)):
+        result = []
+        for item in value:
+            result.append(value_to_readable(item))
+        return result
+
+    return type(value).__name__
 
 
 def _value_to_json(value):
