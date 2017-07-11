@@ -19,7 +19,8 @@ from sklearn.model_selection import cross_val_score, ParameterSampler
 from optimus_ml.extra.forests import RandomForestRegressor, ExtraTreesRegressor
 from optimus_ml.extra.timeout import Timeout
 from optimus_ml.optimizer.builder import Builder
-from optimus_ml.optimizer.converter import Converter
+# from optimus_ml.optimizer.converter import Converter
+from optimus_ml.transcoder import transcoder
 
 warnings.filterwarnings("ignore")
 
@@ -247,7 +248,7 @@ class Optimizer:
             The running time in seconds (equals max_eval_time if evaluation was not successful)        
         """
         say("Evaluating parameters (timeout: %s s): %s" % (
-            self.max_eval_time, Converter.readable_parameters(parameters)), self.verbose)
+            self.max_eval_time, transcoder.dictionary_to_string(parameters)), self.verbose)
 
         # Initiate success variable
         success = True
@@ -294,7 +295,7 @@ class Optimizer:
                 score = [self.timeout_score]
 
         except Exception:
-            say("An error occurred with parameters {}".format(Converter.readable_parameters(parameters)), self.verbose)
+            say("An error occurred with parameters {}".format(transcoder.dictionary_to_string(parameters)), self.verbose)
             print(traceback.format_exc())
             success = False
             score = [self.timeout_score]
@@ -303,7 +304,7 @@ class Optimizer:
         score = np.mean(score)  # type: float
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
-        self.converted_params = Converter.convert_settings(self.validated_params, self.param_distributions)
+        self.converted_params = transcoder.settings_to_indices(self.validated_params, self.param_distributions)
 
         self.current_best_score = max(score, self.current_best_score)
         self.best_scores.append(self.current_best_score)
@@ -345,7 +346,7 @@ class Optimizer:
 
         cv_results = {
             "params": self.validated_params,
-            "readable_params": [Converter.readable_dict(dict_) for dict_ in self.validated_params],
+            "readable_params": [transcoder.dictionary_to_readable_dictionary(dict_) for dict_ in self.validated_params],
             "mean_test_score": self.validated_scores,
             "evaluation_time": self.evaluation_times,
             "maximize_time": maximize_times,
@@ -365,7 +366,7 @@ class Optimizer:
 
                 # Use cleaner names
                 # TODO: make this reproducible from OpenML
-                value = Converter.make_readable(item)
+                value = transcoder.value_to_readable(item)
 
                 # Add value to results
                 cv_results[param].append(value)
@@ -429,7 +430,7 @@ class Optimizer:
         except:
             print(traceback.format_exc())
 
-        converted_settings = Converter.convert_settings(sampled_params_list, param_distributions=self.param_distributions)
+        converted_settings = transcoder.settings_to_indices(sampled_params_list, param_distributions=self.param_distributions)
         scores = self._get_eis_per_second(converted_settings, score_optimum)
         best_index = np.argmax(scores)  # type: int
         best_score = scores[best_index]
@@ -495,19 +496,19 @@ class Optimizer:
         Returns the realistic estimate
         """
 
-        params, scores = Converter.remove_timeouts(self.validated_params, self.validated_scores, self.timeout_score)
+        params, scores = transcoder.remove_timeouts(self.validated_params, self.validated_scores, self.timeout_score)
 
         if len(scores) == 0:
             return original
 
-        converted_settings = Converter.convert_settings(params, self.param_distributions)
+        converted_settings = transcoder.settings_to_indices(params, self.param_distributions)
         self.score_regressor.fit(converted_settings, scores)
 
         if self.use_ei_per_second:
-            times, _ = Converter.remove_timeouts(self.evaluation_times, self.validated_scores, self.timeout_score)
+            times, _ = transcoder.remove_timeouts(self.evaluation_times, self.validated_scores, self.timeout_score)
             self.time_regressor.fit(converted_settings, times)
 
-        setting = Converter.convert_setting(best_setting, self.param_distributions)
+        setting = transcoder.setting_to_indices(best_setting, self.param_distributions)
 
         return self._get_ei_per_second(setting, score_optimum)
 

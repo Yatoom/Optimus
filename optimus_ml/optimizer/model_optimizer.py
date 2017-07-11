@@ -4,8 +4,7 @@ import numpy as np
 from sklearn.metrics.scorer import check_scoring
 from sklearn.model_selection._search import BaseSearchCV, ParameterSampler
 from tqdm import tqdm
-from optimus_ml.vault import decoder
-
+from optimus_ml.transcoder import transcoder
 from optimus_ml.extra.fancyprint import say
 from optimus_ml.optimizer.optimizer import Optimizer
 
@@ -283,7 +282,8 @@ class ModelOptimizer(BaseSearchCV):
         say("Maximum number of iterations as limited by grid: {}".format(grid_size), verbose=self.verbose)
 
         # Decode parameters for use inside the Model Optimizer
-        self.decoded_params = decoder.decode_params(self.encoded_params)
+        # self.decoded_params = decoder.decode_params(self.encoded_params)
+        self.decoded_params = transcoder.reconstruct_grid(self.encoded_params)
 
         # Setup optimizer
         self.optimizer = Optimizer(estimator=self.estimator, param_distributions=self.decoded_params,

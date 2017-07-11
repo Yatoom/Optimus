@@ -21,7 +21,7 @@ def grid_to_json(grid):
     for key, params in grid.items():
         result = []
         for item in params:
-            result.append(_value_to_json(item))
+            result.append(value_to_json(item))
         converted[key] = result
 
     return converted
@@ -45,7 +45,7 @@ def reconstruct_grid(o):
     for key, params in o.items():
         result = []
         for item in params:
-            result.append(_reconstruct_value(item))
+            result.append(reconstruct_value(item))
         converted[key] = result
 
     return converted
@@ -111,7 +111,7 @@ def setting_to_json(setting):
     converted = {}
 
     for key, value in setting.items():
-        converted[key] = _value_to_json(value)
+        converted[key] = value_to_json(value)
 
     return converted
 
@@ -132,7 +132,7 @@ def reconstruct_setting(o):
     converted = {}
 
     for key, value in o.items():
-        converted[key] = _reconstruct_value(value)
+        converted[key] = reconstruct_value(value)
 
     return converted
 
@@ -312,7 +312,7 @@ def value_to_readable(value):
     return type(value).__name__
 
 
-def _value_to_json(value):
+def value_to_json(value):
     """
     Make a value JSON serializable.
 
@@ -337,7 +337,7 @@ def _value_to_json(value):
     return None
 
 
-def _reconstruct_value(o):
+def reconstruct_value(o):
     """
     Reconstruct the original value from a JSON serializable value.
 
@@ -385,3 +385,31 @@ def _decode_source(source, **init_params):
         warnings.warn('Warning: {} is not available.'.format(source))
         class_type = None
     return class_type
+
+
+def remove_timeouts(parameters, scores, timeout_score=0):
+    """
+    Removes the validations that got a timeout. These are useful to keep to direct the Gaussian Process away from these
+    points, but if we need a realistic estimation of the expected improvement, we should remove these points.
+
+    Parameters
+    ----------
+    parameters: list
+        A list of all validated parameters
+
+    scores: list
+        A list of all validation scores
+
+    timeout_score: float or int
+        The score value that indicates a timeout
+
+    Returns
+    -------
+    The new (parameters, scores) without timeouts
+    """
+
+    params = copy.copy(parameters)
+    mask = (np.array(scores) != timeout_score).tolist()
+    params = np.array(params)[mask].tolist()
+    scores = np.array(scores)[mask].tolist()
+    return params, scores
