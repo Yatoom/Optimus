@@ -4,10 +4,10 @@ import numpy as np
 from sklearn.metrics.scorer import check_scoring
 from sklearn.model_selection._search import BaseSearchCV, ParameterSampler
 from tqdm import tqdm
-from optimus.vault import decoder
+from optimus_ml.vault import decoder
 
-from optimus.extra.fancyprint import say
-from optimus.optimizer.optimizer import Optimizer
+from optimus_ml.extra.fancyprint import say
+from optimus_ml.optimizer.optimizer import Optimizer
 
 
 class ModelOptimizer(BaseSearchCV):

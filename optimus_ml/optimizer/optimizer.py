@@ -8,7 +8,7 @@ import os
 if os.name == "nt":
     import pynisher
 
-from optimus.extra.fancyprint import say
+from optimus_ml.extra.fancyprint import say
 from scipy.stats import norm
 from sklearn.ensemble import AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -16,10 +16,10 @@ from sklearn.gaussian_process.kernels import ConstantKernel, Matern
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, ParameterSampler
 
-from optimus.extra.forests import RandomForestRegressor, ExtraTreesRegressor
-from optimus.extra.timeout import Timeout
-from optimus.optimizer.builder import Builder
-from optimus.optimizer.converter import Converter
+from optimus_ml.extra.forests import RandomForestRegressor, ExtraTreesRegressor
+from optimus_ml.extra.timeout import Timeout
+from optimus_ml.optimizer.builder import Builder
+from optimus_ml.optimizer.converter import Converter
 
 warnings.filterwarnings("ignore")
 

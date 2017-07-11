@@ -10,8 +10,8 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import DecisionTreeClassifier
 
-from optimus.extra.dual_imputer import DualImputer
-from optimus.extra.stopwatch import Stopwatch
+from optimus_ml.extra.dual_imputer import DualImputer
+from optimus_ml.extra.stopwatch import Stopwatch
 
 
 class Extractor:
