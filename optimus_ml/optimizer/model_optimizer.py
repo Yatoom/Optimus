@@ -2,14 +2,14 @@ import time
 
 import numpy as np
 from sklearn.metrics.scorer import check_scoring
-from sklearn.model_selection._search import BaseSearchCV, ParameterSampler
+from sklearn.model_selection._search import ParameterSampler, RandomizedSearchCV
 from tqdm import tqdm
 from optimus_ml.transcoder import transcoder
 from optimus_ml.extra.fancyprint import say
 from optimus_ml.optimizer.optimizer import Optimizer
 
 
-class ModelOptimizer(BaseSearchCV):
+class ModelOptimizer(RandomizedSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=150,
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
@@ -93,6 +93,7 @@ class ModelOptimizer(BaseSearchCV):
         self.refit = refit
         self.estimator = estimator
         self.encoded_params = encoded_params
+        self.param_distributions = transcoder.reconstruct_grid(encoded_params)
         self.inner_cv = inner_cv
         self.scoring = scoring
         self.timeout_score = timeout_score
