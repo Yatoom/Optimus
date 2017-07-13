@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.metrics.scorer import check_scoring
 from sklearn.model_selection._search import ParameterSampler, RandomizedSearchCV
 from tqdm import tqdm
-from optimus_ml.transcoder import transcoder
+from optimus_ml.transcoder import converter
 from optimus_ml.extra.fancyprint import say
 from optimus_ml.optimizer.optimizer import Optimizer
 
@@ -93,7 +93,7 @@ class ModelOptimizer(RandomizedSearchCV):
         self.refit = refit
         self.estimator = estimator
         self.encoded_params = encoded_params
-        self.param_distributions = transcoder.reconstruct_grid(encoded_params)
+        self.param_distributions = converter.reconstruct_grid(encoded_params)
         self.inner_cv = inner_cv
         self.scoring = scoring
         self.timeout_score = timeout_score
@@ -284,7 +284,7 @@ class ModelOptimizer(RandomizedSearchCV):
 
         # Decode parameters for use inside the Model Optimizer
         # self.decoded_params = decoder.decode_params(self.encoded_params)
-        self.decoded_params = transcoder.reconstruct_grid(self.encoded_params)
+        self.decoded_params = converter.reconstruct_grid(self.encoded_params)
 
         # Setup optimizer
         self.optimizer = Optimizer(estimator=self.estimator, param_distributions=self.decoded_params,

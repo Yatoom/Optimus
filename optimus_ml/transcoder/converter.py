@@ -312,12 +312,15 @@ def value_to_readable(value):
     return type(value).__name__
 
 
-def value_to_json(value):
+def value_to_json(value, openml_compatible=False):
     """
     Make a value JSON serializable.
 
     Parameters
     ----------
+    openml_compatible: bool
+        Whether or not to make values OpenML compatible
+
     value: primitive or object
         The value to convert
 
@@ -329,10 +332,16 @@ def value_to_json(value):
         return value
 
     elif hasattr(value, "get_params"):
-        return {
+        result = {
             "source": "{}.{}".format(type(value).__module__, type(value).__name__),
             "params": value.get_params()
         }
+
+        if openml_compatible:
+            result = str(result)
+            # json.dumps() gives problems when it is stored on the server and json.loads() is used after
+
+        return result
 
     return None
 
