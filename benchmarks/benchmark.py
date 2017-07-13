@@ -40,60 +40,8 @@ class Benchmark:
         db, table = config.connect()
         self.db_table = table
 
-    def multi_bench(self, seeds=None):
-        if seeds is None:
-            seeds = [1517302035, 2148718844, 2739748925, 2713100086, 3803360706, 554072026, 975766179, 2463626752,
-                     936287012, 3326676407]
-
-        for seed in seeds:
-            print("Seed: {}".format(seed))
-
-            print("Randomized")
-            self.benchmark(method=Method.RANDOMIZED, seed=seed)
-
-            print("Normal - GP")
-            self.benchmark(method=Method.NORMAL, seed=seed, score_regressor="gp")
-
-            print("Normal - Forest")
-            self.benchmark(method=Method.NORMAL, seed=seed, score_regressor="forest")
-            #
-            # print("EI/s - GP/GP")
-            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="gp", time_regressor="gp")
-            #
-            # print("EI/s - GP/Linear")
-            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="gp", time_regressor="linear")
-            #
-            # print("EI/s - Forest/GP")
-            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest", time_regressor="gp")
-
-            print("EI/s - Forest/Linear")
-            self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest", time_regressor="linear")
-
-            print("EI/s - Forest/Forest")
-            self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest", time_regressor="forest")
-
-            # print("EI/s - Extra/Extra")
-            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="extra forest",
-            #                time_regressor="extra forest")
-
-            # print("EI/s - Extra/Extra")
-            # self.benchmark(method=Method.EI_PER_SECOND, seed=seed, score_regressor="forest",
-            #                time_regressor="extra forest")
-            #
-            # print("EI/√s - GP/GP")
-            # self.benchmark(method=Method.EI_PER_ROOT_SECOND, seed=seed, score_regressor="gp", time_regressor="gp")
-            #
-            # print("EI/√s - GP/Linear")
-            # self.benchmark(method=Method.EI_PER_ROOT_SECOND, seed=seed, score_regressor="gp", time_regressor="linear")
-            #
-            # print("EI/√s - Forest/GP")
-            # self.benchmark(method=Method.EI_PER_ROOT_SECOND, seed=seed, score_regressor="forest", time_regressor="gp")
-            #
-            # print("EI/√s - Forest/Linear")
-            # self.benchmark(method=Method.EI_PER_ROOT_SECOND, seed=seed, score_regressor="forest", time_regressor="linear")
-
     def benchmark(self, method=Method.RANDOMIZED, score_regressor="gp", time_regressor="gp", seed=0, starting_points=5,
-                  verbose=False):
+                  verbose=False, local_search=False):
         n_iter = self.n_iter
         if method == Method.RANDOMIZED:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
@@ -101,17 +49,17 @@ class Benchmark:
         elif method == Method.NORMAL:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=False, verbose=verbose, use_ei_per_second=False,
-                                       score_regression=score_regressor)
+                                       score_regression=score_regressor, local_search=local_search)
         elif method == Method.EI_PER_SECOND:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=False, verbose=verbose, use_ei_per_second=True,
                                        use_root_second=False, score_regression=score_regressor,
-                                       time_regression=time_regressor)
+                                       time_regression=time_regressor, local_search=local_search)
         elif method == Method.EI_PER_ROOT_SECOND:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=False, verbose=verbose, use_ei_per_second=True,
                                        use_root_second=True, score_regression=score_regressor,
-                                       time_regression=time_regressor)
+                                       time_regression=time_regressor, local_search=local_search)
         elif method == Method.RANDOMIZED_2X:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=True, verbose=verbose, simulate_speedup=2)
@@ -129,7 +77,8 @@ class Benchmark:
         for i in range(0, len(results["best_score"])):
             iteration = {
                 "task": self.task_id,
-                "method": "{} (EI: {}, RT: {})".format(method.name, score_regressor, time_regressor),
+                "method": "{}{} (EI: {}, RT: {})".format(method.name, "_LS" if local_search else "", score_regressor,
+                                                         time_regressor),
                 "iteration": i,
                 "score": results["mean_test_score"][i],
                 "best_score": results["best_score"][i],
@@ -141,6 +90,7 @@ class Benchmark:
                 "seed": seed,
                 "method_name": method.name,
                 "time_regressor": time_regressor,
-                "score_regressor": score_regressor
+                "score_regressor": score_regressor,
+                "local_search": local_search
             }
             self.db_table.insert(iteration)
