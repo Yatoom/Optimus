@@ -11,6 +11,7 @@ pip install optimus-ml
 ```
 
 ## Example usage
+### Using Optimus without OpenML
 ```python
 from optimus_ml import ModelOptimizer
 from sklearn.svm import SVC
@@ -40,6 +41,58 @@ opt.fit(X, y)
 
 # Print best parameter setting and corresponding score
 print(opt.best_params_, opt.best_score_)
+```
+
+### Using Optimus with OpenML
+```python
+from sklearn.preprocessing import StandardScaler, RobustScaler
+from optimus_ml import ModelOptimizer
+from optimus_ml import converter
+from sklearn.svm import SVC
+import numpy as np
+import openml
+
+# Setup classifier
+clf = SVC(probability=True, random_state=3)
+
+# Setup parameter grid, including some preprocessors with the special @preprocessor key
+param_grid = {
+    "C": np.logspace(-10, 10, num=21, base=2).tolist(),
+    "gamma": np.logspace(-10, 0, num=11, base=2).tolist(),
+    "kernel": ["linear", "poly", "rbf"],
+    "@preprocessor": [
+        StandardScaler(),
+        RobustScaler()
+    ]
+}
+
+# Convert the param_grid to a JSON serializable format for compatibility with OpenML
+encoded_grid = converter.grid_to_json(param_grid)
+
+# Setup Model Optimizer. The Model Optimizer knows how to decode an encoded grid.
+opt = ModelOptimizer(estimator=clf, encoded_params=encoded_grid, inner_cv=10, max_run_time=1500, n_iter=10)
+
+# Choose a task to run on
+task = openml.tasks.get_task(12)
+
+# Run the model on the task
+run = openml.runs.run_model_on_task(task, opt)
+
+# Publish the task to OpenML
+run.publish()
+```
+
+### Reproducing runs from OpenML
+```python
+from optimus_ml.extra import oml
+from openml import runs
+
+# A (temporary) wrapper around the original `initialize_model_from_trace()` to 
+# handle extra functionality, such as decoding dictionaries.
+print(oml.initialize_model_from_trace(5709844, 0, 0, 0))
+
+# The default OpenML function.
+print(runs.initialize_model_from_run(5709844))
 ```
 
 ## Method comparison
