@@ -10,18 +10,35 @@ def generate_config(X, categorical, random_state):
     print("Any categorical", any_categorical)
 
     # Pre-processing operators
-    DI = (
-        "extra.dual_imputer.DualImputer",
-        {"categorical": categorical}
-    )
-    OHE = (
-        "sklearn.preprocessing.OneHotEncoder",
-        {"categorical_features": categorical, "handle_unknown": "ignore", "sparse": False}
-    )
-    SS = ("sklearn.preprocessing.StandardScaler", {})
-    RS = ("sklearn.preprocessing.RobustScaler", {})
-    PC = ("sklearn.decomposition.PCA", {})
-    PF = ("sklearn.preprocessing.PolynomialFeatures", {})
+    DI = {
+        "source": "extra.dual_imputer.DualImputer",
+        "params": {"categorical": categorical}
+    }
+
+    OHE = {
+        "source": "sklearn.preprocessing.OneHotEncoder",
+        "params": {"categorical_features": categorical, "handle_unknown": "ignore", "sparse": False}
+    }
+
+    SS = {
+        "source": "sklearn.preprocessing.StandardScaler",
+        "params": {}
+    }
+
+    RS = {
+        "source": "sklearn.preprocessing.RobustScaler",
+        "params": {}
+    }
+
+    PC = {
+        "source": "sklearn.decomposition.PCA",
+        "params": {}
+    }
+
+    PF = {
+        "source": "sklearn.preprocessing.PolynomialFeatures",
+        "params": {}
+    }
 
     # Configuration
     return [
@@ -43,11 +60,10 @@ def generate_config(X, categorical, random_state):
 
         # Random Forests
         {
-            "estimator": (
-                "sklearn.ensemble.RandomForestClassifier",
-                # {"n_jobs": -1, "n_estimators": 512, "random_state": random_state}
-                {"n_jobs": -1, "random_state": random_state}
-            ),
+            "estimator": {
+                "source": "sklearn.ensemble.RandomForestClassifier",
+                "params": {"n_jobs": -1, "random_state": random_state}
+            },
             "params": {
                 'n_estimators': [8, 16, 32, 64, 128, 256, 512],
                 'criterion': ["gini", "entropy"],
@@ -56,7 +72,7 @@ def generate_config(X, categorical, random_state):
                 'min_samples_split': list(range(2, 21)),
                 'min_samples_leaf': list(range(1, 21)),
                 'bootstrap': [True, False],
-                '!@preprocessor': conditional_items([
+                '@preprocessor': conditional_items([
                     (DI, any_missing, None),
                     (OHE, not any_missing and any_categorical),
                     ([DI, OHE], any_missing and any_categorical),

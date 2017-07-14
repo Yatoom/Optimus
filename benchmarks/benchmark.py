@@ -3,8 +3,9 @@ from enum import Enum
 import openml
 
 from benchmarks import config
+from optimus_ml.transcoder import converter
 from optimus_ml.optimizer.model_optimizer import ModelOptimizer
-from optimus_ml.vault import model_factory, decoder
+from optimus_ml.vault import model_factory
 
 
 class Method(Enum):
@@ -26,7 +27,7 @@ class Benchmark:
         )
 
         model = model_factory.generate_config(X, categorical, random_state=10)[0]
-        estimator = decoder.decode_source_tuples(model["estimator"], special_prefix="!")
+        estimator = converter.reconstruct_value(model["estimator"])
         params = model["params"]
         openml_splits = [(i.train, i.test) for i in task.iterate_all_splits()]
 
