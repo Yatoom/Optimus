@@ -25,14 +25,17 @@ def create_all_jobs(task, seed, local_search):
     # create_job(task, 0, seed)
     #
     # Normal - GP
-    create_job(task, 1, seed, local_search=local_search, score_regressor="gp")
+    # create_job(task, 1, seed, local_search=local_search, score_regressor="gp")
 
     # Normal - Forest
-    create_job(task, 1, seed, local_search=local_search, score_regressor="forest")
+    # create_job(task, 1, seed, local_search=local_search, score_regressor="forest")
 
     # EI/s - GP/GP
-    create_job(task, 2, seed, local_search=local_search, score_regressor="gp", time_regressor="gp")
-    #
+    # create_job(task, 2, seed, local_search=local_search, score_regressor="gp", time_regressor="gp")
+
+    # EI/s - GP / Extra forest
+    create_job(task, 2, seed, local_search=local_search, score_regressor="gp", time_regressor="extra forest")
+
     # # EI/s - Forest / Forest
     # create_job(task, 2, seed, local_search=local_search, score_regressor="forest", time_regressor="forest")
     #
@@ -40,7 +43,7 @@ def create_all_jobs(task, seed, local_search):
     # create_job(task, 2, seed, local_search=local_search, score_regressor="forest", time_regressor="extra forest")
 
     # EI/s - Forest - Linear
-    create_job(task, 2, seed, local_search=local_search, score_regressor="forest", time_regressor="linear")
+    # create_job(task, 2, seed, local_search=local_search, score_regressor="forest", time_regressor="linear")
 
 
 def get_number_of_jobs():
