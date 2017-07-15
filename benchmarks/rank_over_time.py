@@ -7,6 +7,7 @@ db, table = config.connect()
 default_seeds = [2589731706, 2382469894, 3544753667]
 default_tasks = [12, 14, 16, 20, 22, 28, 32, 45, 58]
 
+
 def multiplot():
     # Ranking
     scores = get_method_ranking(seeds=default_seeds, max_time=1500, tasks=default_tasks)
@@ -19,11 +20,12 @@ def multiplot():
 
     # Evaluation time
     scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="evaluation_time", tasks=default_tasks)
-    plot(rename(scores), y_label="iterations", x_label="time(s)", title="Evaluation time of different methods")
+    plot(rename(scores), y_label="evaluation time (moving average)", x_label="time(s)",
+         title="Evaluation time of different methods", averaged=True)
 
     # Maximize time
     scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="maximize_time", tasks=default_tasks)
-    plot(rename(scores), y_label="iterations", x_label="time(s)", title="Maximization time of different methods")
+    plot(rename(scores), y_label="maximization time", x_label="time(s)", title="Maximization time of different methods")
 
 
 def plot(scores, averaged=False, x_label="", y_label="", title=""):
