@@ -33,7 +33,7 @@ def plot(scores, averaged=False, x_label="", y_label="", title=""):
         frame = frame.apply(lambda x: np.cumsum(x) / np.arange(1, len(x) + 1), axis=0)
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    frame.plot(ax=ax)
+    frame.plot(ax=ax, colormap="tab20")
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.set_title(title)
@@ -46,10 +46,14 @@ def rename(scores):
         "Randomized 2X": scores["RANDOMIZED_2X (EI: gp, RT: gp)"],
         "Normal (gp)": scores["NORMAL (EI: gp, RT: gp)"],
         "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
+        "Normal (gp) + LS": scores["NORMAL_LS (EI: gp, RT: gp)"],
+        "Normal (forest) + LS": scores["NORMAL_LS (EI: forest, RT: gp)"],
         "EI/s (forest / extra forest)": scores["EI_PER_SECOND (EI: forest, RT: extra forest)"],
         "EI/s (forest / forest)": scores["EI_PER_SECOND (EI: forest, RT: forest)"],
         "EI/s (forest / linear)": scores["EI_PER_SECOND (EI: forest, RT: linear)"],
-        "EI/s (gp / gp)": scores["EI_PER_SECOND (EI: gp, RT: gp)"]
+        "EI/s (gp / gp)": scores["EI_PER_SECOND (EI: gp, RT: gp)"],
+        "EI/s (forest / linear) + LS": scores["EI_PER_SECOND_LS (EI: forest, RT: linear)"],
+        "EI/s (gp / gp) + LS": scores["EI_PER_SECOND_LS (EI: gp, RT: gp)"],
     }
 
 
