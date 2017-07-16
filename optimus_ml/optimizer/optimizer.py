@@ -1,4 +1,3 @@
-import json
 import time
 import traceback
 import warnings
@@ -124,8 +123,8 @@ class Optimizer:
         def get_gaussian_process_regressor():
             cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
             other_kernel = Matern(
-                length_scale=np.ones(len(self.param_distributions)),
-                length_scale_bounds=[(0.01, 100)] * len(self.param_distributions),
+                length_scale=np.ones(len(self.param_distributions) if not self.use_projection else 2),
+                length_scale_bounds=[(0.01, 100)] * (len(self.param_distributions) if not self.use_projection else 2),
                 nu=2.5)
 
             return GaussianProcessRegressor(
@@ -185,7 +184,7 @@ class Optimizer:
         # Returns the name of the estimator (e.g. LogisticRegression)
         return type(self.estimator).__name__
 
-    def maximize(self, score_optimum=None, realize=True):
+    def maximize(self, score_optimum=None, realize=False):
         """
         Find the next best hyper-parameter setting to optimizer.
 
@@ -432,18 +431,7 @@ class Optimizer:
         if num_valid_scores == 0:
             return np.random.choice(sampled_params_list), 0
 
-        # Fit parameters
-        if self.use_projection:
-            projected_params = self.projector.fit_transform(self.converted_params, self.validated_scores)
-        else:
-            projected_params = self.converted_params
-
-        try:
-            self.score_regressor.fit(projected_params, self.validated_scores)
-            if self.use_ei_per_second:
-                self.time_regressor.fit(projected_params, self.evaluation_times)
-        except:
-            print(traceback.format_exc())
+        self._fit(self.converted_params, self.validated_scores, self.evaluation_times, remove_timeouts=False)
 
         converted_settings = converter.settings_to_indices(sampled_params_list, param_distributions=self.param_distributions)
         scores = self._get_eis_per_second(converted_settings, score_optimum)
@@ -557,7 +545,7 @@ class Optimizer:
         if self.use_ei_per_second:
 
             # Predict running times
-            running_times = self.time_regressor.predict(points)
+            running_times = self._predict_time(points)
 
             # Some algorithms, such as Linear Regression, predict negative values for the running time. In that case,
             # we take the lowest evaluation time we have observed so far
@@ -589,14 +577,8 @@ class Optimizer:
         Returns the Expected Improvement
         """
 
-        # Project points
-        if self.use_projection:
-            projected_points = self.projector.transform(points)
-        else:
-            projected_points = points
-
         # Predict mu's and sigmas for each point
-        mu, sigma = self.score_regressor.predict(projected_points, return_std=True)
+        mu, sigma = self._predict_score(points)
 
         # Subtract each item in list by score_optimum
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
@@ -615,3 +597,30 @@ class Optimizer:
                 ei[index] = -1
 
         return ei
+
+    def _fit(self, params, scores, times, remove_timeouts=False):
+
+        # Remove timeouts if desired
+        if remove_timeouts:
+            params, scores = converter.remove_timeouts(params, scores, self.timeout_score)
+
+        # Project parameters
+        projected_params = self.projector.fit_transform(params, scores)
+
+        # Try to fit score regressor (and time regressor)
+        try:
+            self.score_regressor.fit(projected_params, scores)
+            if self.use_ei_per_second:
+                self.time_regressor.fit(projected_params, times)
+        except:
+            print(traceback.format_exc())
+
+    def _predict_score(self, points):
+        projected_points = self.projector.transform(points)
+        mu, sigma = self.score_regressor.predict(projected_points, return_std=True)
+        return mu, sigma
+
+    def _predict_time(self, points):
+        projected_points = self.projector.transform(points)
+        running_times = self.time_regressor.predict(projected_points)
+        return running_times
