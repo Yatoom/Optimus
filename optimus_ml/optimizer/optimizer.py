@@ -6,6 +6,9 @@ import warnings
 import numpy as np
 import copy
 import os
+
+from sklearn.random_projection import GaussianRandomProjection
+
 if os.name == "nt":
     import pynisher
 
@@ -29,7 +32,7 @@ warnings.filterwarnings("ignore")
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 time_regression="gp", score_regression="gp", random_state=42, local_search=True,
+                 time_regression="gp", score_regression="gp", random_state=42, local_search=True, use_projection=True,
                  ls_max_steps=np.inf):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
@@ -82,6 +85,9 @@ class Optimizer:
         local_search: bool
             Whether to do local search
 
+        use_projection: bool
+            Whether to use projection before fitting/predicting
+
         ls_max_steps: float
             Maximum number of steps to do in local search
         """
@@ -99,6 +105,7 @@ class Optimizer:
         self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
         self.ls_max_steps = ls_max_steps
         self.local_search = local_search
+        self.use_projection = use_projection
 
         # Setup initial values
         self.validated_scores = []
@@ -110,6 +117,8 @@ class Optimizer:
         self.converted_params = None
         self.current_best_score = -np.inf
         self.current_best_time = np.inf
+
+        self.projector = GaussianRandomProjection(n_components=2)
 
         # Helper function to create Gaussian Process Regressor
         def get_gaussian_process_regressor():
@@ -424,10 +433,15 @@ class Optimizer:
             return np.random.choice(sampled_params_list), 0
 
         # Fit parameters
+        if self.use_projection:
+            projected_params = self.projector.fit_transform(self.converted_params, self.validated_scores)
+        else:
+            projected_params = self.converted_params
+
         try:
-            self.score_regressor.fit(self.converted_params, self.validated_scores)
+            self.score_regressor.fit(projected_params, self.validated_scores)
             if self.use_ei_per_second:
-                self.time_regressor.fit(self.converted_params, self.evaluation_times)
+                self.time_regressor.fit(projected_params, self.evaluation_times)
         except:
             print(traceback.format_exc())
 
@@ -575,8 +589,14 @@ class Optimizer:
         Returns the Expected Improvement
         """
 
+        # Project points
+        if self.use_projection:
+            projected_points = self.projector.transform(points)
+        else:
+            projected_points = points
+
         # Predict mu's and sigmas for each point
-        mu, sigma = self.score_regressor.predict(points, return_std=True)
+        mu, sigma = self.score_regressor.predict(projected_points, return_std=True)
 
         # Subtract each item in list by score_optimum
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf

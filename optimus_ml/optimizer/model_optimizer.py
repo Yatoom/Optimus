@@ -13,7 +13,7 @@ class ModelOptimizer(RandomizedSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=150,
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
-                 max_run_time=1500, simulate_speedup=1, local_search=True,
+                 max_run_time=1500, simulate_speedup=1, local_search=True, use_projection=True,
                  ls_max_steps=np.inf):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
@@ -79,6 +79,9 @@ class ModelOptimizer(RandomizedSearchCV):
         local_search: bool
             Whether to do local search
 
+        use_projection: bool
+            Whether to use projection before fitting/predicting
+
         ls_max_steps: float
             Maximum number of steps to do in local search
         """
@@ -105,6 +108,7 @@ class ModelOptimizer(RandomizedSearchCV):
         self.time_regression = time_regression
         self.score_regression = score_regression
         self.max_run_time = max_run_time * self.simulate_speedup
+        self.use_projection = use_projection
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -294,4 +298,6 @@ class ModelOptimizer(RandomizedSearchCV):
                                    verbose=self.verbose, draw_samples=self.draw_samples,
                                    use_root_second=self.use_root_second, time_regression=self.time_regression,
                                    score_regression=self.score_regression,
-                                   local_search=self.local_search, ls_max_steps=self.ls_max_steps)
+                                   local_search=self.local_search,
+                                   use_projection=self.use_projection,
+                                   ls_max_steps=self.ls_max_steps)
