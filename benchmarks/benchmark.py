@@ -42,7 +42,7 @@ class Benchmark:
         self.db_table = table
 
     def benchmark(self, method=Method.RANDOMIZED, score_regressor="gp", time_regressor="gp", seed=0, starting_points=5,
-                  verbose=False, local_search=False, use_projection=True):
+                  verbose=False, local_search=False):
         n_iter = self.n_iter
         if method == Method.RANDOMIZED:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
@@ -50,20 +50,17 @@ class Benchmark:
         elif method == Method.NORMAL:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=False, verbose=verbose, use_ei_per_second=False,
-                                       score_regression=score_regressor, local_search=local_search,
-                                       use_projection=use_projection)
+                                       score_regression=score_regressor, local_search=local_search)
         elif method == Method.EI_PER_SECOND:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=False, verbose=verbose, use_ei_per_second=True,
                                        use_root_second=False, score_regression=score_regressor,
-                                       time_regression=time_regressor, local_search=local_search,
-                                       use_projection=use_projection)
+                                       time_regression=time_regressor, local_search=local_search)
         elif method == Method.EI_PER_ROOT_SECOND:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=False, verbose=verbose, use_ei_per_second=True,
                                        use_root_second=True, score_regression=score_regressor,
-                                       time_regression=time_regressor, local_search=local_search,
-                                       use_projection=use_projection)
+                                       time_regression=time_regressor, local_search=local_search)
         elif method == Method.RANDOMIZED_2X:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
                                        random_search=True, verbose=verbose, simulate_speedup=2)
@@ -84,7 +81,7 @@ class Benchmark:
                 "method": "{}{}{} (EI: {}, RT: {})".format(
                     method.name,
                     "_LS" if local_search else "",
-                    "_PROJ" if use_projection else "",
+                    "",
                     score_regressor,
                     time_regressor
                 ),
@@ -101,6 +98,5 @@ class Benchmark:
                 "time_regressor": time_regressor,
                 "score_regressor": score_regressor,
                 "local_search": local_search,
-                "use_projection": use_projection
             }
             self.db_table.insert(iteration)

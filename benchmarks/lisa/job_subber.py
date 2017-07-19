@@ -28,7 +28,10 @@ def create_all_jobs(task, seed):
     # create_job(task, 1, seed, local_search=local_search, score_regressor="gp")
 
     # Normal - GP + LS + Projection
-    create_job(task, 1, seed, local_search=True, score_regressor="gp", use_projection=True)
+    # create_job(task, 1, seed, local_search=True, score_regressor="gp", use_projection=True)
+
+    # Normal - normal forest + LS
+    create_job(task, 1, seed, local_search=True, score_regressor="normal forest")
 
     # Normal - Forest
     # create_job(task, 1, seed, local_search=local_search, score_regressor="forest")
@@ -53,15 +56,14 @@ def get_number_of_jobs():
     return len(os.listdir(project_dir + "benchmarks/lisa/jobs/"))
 
 
-def create_job(task, method, seed, local_search=False, score_regressor="gp", time_regressor="gp", starting_points=5,
-               use_projection=True):
+def create_job(task, method, seed, local_search=False, score_regressor="gp", time_regressor="gp", starting_points=5):
     n_jobs = get_number_of_jobs()
     f = open('jobs/job_{}.sh'.format(n_jobs), "w+")
     f.write(config)
     benchmark_path = project_dir + "benchmark.py"
-    f.write("{0} {1} {2} {3} {4} \"{5}\" \"{6}\" {7} {8} {9}".format(python_path, benchmark_path, task, method, seed,
+    f.write("{0} {1} {2} {3} {4} \"{5}\" \"{6}\" {7} {8}".format(python_path, benchmark_path, task, method, seed,
                                                                      score_regressor, time_regressor, starting_points,
-                                                                     int(local_search), int(use_projection)))
+                                                                     int(local_search)))
 
 
 def sub_jobs():

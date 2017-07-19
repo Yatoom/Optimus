@@ -6,6 +6,8 @@ import numpy as np
 import copy
 import os
 
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import Normalizer
 from sklearn.random_projection import GaussianRandomProjection
 
 if os.name == "nt":
@@ -31,7 +33,7 @@ warnings.filterwarnings("ignore")
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
-                 time_regression="gp", score_regression="gp", random_state=42, local_search=True, use_projection=True,
+                 time_regression="gp", score_regression="gp", random_state=42, local_search=True,
                  ls_max_steps=np.inf):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
@@ -84,9 +86,6 @@ class Optimizer:
         local_search: bool
             Whether to do local search
 
-        use_projection: bool
-            Whether to use projection before fitting/predicting
-
         ls_max_steps: float
             Maximum number of steps to do in local search
         """
@@ -104,7 +103,6 @@ class Optimizer:
         self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
         self.ls_max_steps = ls_max_steps
         self.local_search = local_search
-        self.use_projection = use_projection
 
         # Setup initial values
         self.validated_scores = []
@@ -117,14 +115,12 @@ class Optimizer:
         self.current_best_score = -np.inf
         self.current_best_time = np.inf
 
-        self.projector = GaussianRandomProjection(n_components=2)
-
         # Helper function to create Gaussian Process Regressor
         def get_gaussian_process_regressor():
             cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
             other_kernel = Matern(
-                length_scale=np.ones(len(self.param_distributions) if not self.use_projection else 2),
-                length_scale_bounds=[(0.01, 100)] * (len(self.param_distributions) if not self.use_projection else 2),
+                length_scale=np.ones(len(self.param_distributions)),
+                length_scale_bounds=[(0.01, 100)] * len(self.param_distributions),
                 nu=2.5)
 
             return GaussianProcessRegressor(
@@ -135,12 +131,19 @@ class Optimizer:
         # Helper function to create Random Forest Regressor
         def get_random_forest_regressor():
             return RandomForestRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
-                                                         n_jobs=1, max_depth=20, random_state=random_state)
+                                         n_jobs=1, max_depth=20, random_state=random_state)
+
+        def get_norm_forest_regressor():
+            return make_pipeline(
+                Normalizer(norm="max"),
+                RandomForestRegressor(bootstrap=False, max_features=0.5, min_samples_leaf=0.05, min_samples_split=0.15,
+                                      n_estimators=100, random_state=3)
+            )
 
         # Helper function to create Extra Trees Regressor
         def get_extra_trees_regressor():
             return ExtraTreesRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
-                                n_jobs=1, max_depth=20, random_state=random_state)
+                                       n_jobs=1, max_depth=20, random_state=random_state)
 
         def get_adaboost_regressor():
             return AdaBoostRegressor(n_estimators=50, random_state=random_state)
@@ -160,6 +163,8 @@ class Optimizer:
             self.score_regressor = get_extra_trees_regressor()
         elif score_regression == "gp":
             self.score_regressor = get_gaussian_process_regressor()
+        elif score_regression == "normal forest":
+            self.score_regressor = get_norm_forest_regressor()
         else:
             raise ValueError("The value '{}' is not a valid value for 'score_regression'".format(score_regression))
 
@@ -177,6 +182,8 @@ class Optimizer:
                 self.time_regressor = get_gradient_boosting_regressor()
             elif time_regression == "adaboost":
                 self.time_regressor = get_adaboost_regressor()
+            elif time_regression == "normal forest":
+                self.time_regressor = get_norm_forest_regressor()
             else:
                 raise ValueError("The value '{}' is not a valid value for 'time_regression'".format(time_regression))
 
@@ -433,7 +440,8 @@ class Optimizer:
 
         self._fit(self.converted_params, self.validated_scores, self.evaluation_times, remove_timeouts=False)
 
-        converted_settings = converter.settings_to_indices(sampled_params_list, param_distributions=self.param_distributions)
+        converted_settings = converter.settings_to_indices(sampled_params_list,
+                                                           param_distributions=self.param_distributions)
         scores = self._get_eis_per_second(converted_settings, score_optimum)
         best_index = np.argmax(scores)  # type: int
         best_score = scores[best_index]
@@ -604,23 +612,18 @@ class Optimizer:
         if remove_timeouts:
             params, scores = converter.remove_timeouts(params, scores, self.timeout_score)
 
-        # Project parameters
-        projected_params = self.projector.fit_transform(params, scores)
-
         # Try to fit score regressor (and time regressor)
         try:
-            self.score_regressor.fit(projected_params, scores)
+            self.score_regressor.fit(params, scores)
             if self.use_ei_per_second:
-                self.time_regressor.fit(projected_params, times)
+                self.time_regressor.fit(params, times)
         except:
             print(traceback.format_exc())
 
     def _predict_score(self, points):
-        projected_points = self.projector.transform(points)
-        mu, sigma = self.score_regressor.predict(projected_points, return_std=True)
+        mu, sigma = self.score_regressor.predict(points, return_std=True)
         return mu, sigma
 
     def _predict_time(self, points):
-        projected_points = self.projector.transform(points)
-        running_times = self.time_regressor.predict(projected_points)
+        running_times = self.time_regressor.predict(points)
         return running_times
