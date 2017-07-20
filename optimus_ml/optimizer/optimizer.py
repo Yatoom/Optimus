@@ -6,7 +6,7 @@ import numpy as np
 import copy
 import os
 
-from sklearn.pipeline import make_pipeline
+from optimus_ml.extra.pipeline import make_pipeline
 from sklearn.preprocessing import Normalizer
 from sklearn.random_projection import GaussianRandomProjection
 
