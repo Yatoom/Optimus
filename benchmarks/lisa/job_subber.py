@@ -33,7 +33,7 @@ def create_all_jobs(task, seed):
     # Normal - normal forest + LS
     # create_job(task, 1, seed, local_search=True, score_regressor="normal forest")
 
-    create_job(task, 1, seed, score_regressor="gp")
+    create_job(task, 1, seed, score_regressor="forest")
 
 
     # Normal - Forest
