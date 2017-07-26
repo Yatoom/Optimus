@@ -50,6 +50,7 @@ def rename(scores):
         "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
         "Normal (gp) + LS": scores["NORMAL_LS (EI: gp, RT: gp)"],
         "Normal (forest) + LS": scores["NORMAL_LS (EI: forest, RT: gp)"],
+        "Normal (normal forest) + LS": scores["NORMAL_LS (EI: normal forest, RT: gp)"],
         "EI/s (forest / extra forest)": scores["EI_PER_SECOND (EI: forest, RT: extra forest)"],
         "EI/s (forest / forest)": scores["EI_PER_SECOND (EI: forest, RT: forest)"],
         "EI/s (forest / linear)": scores["EI_PER_SECOND (EI: forest, RT: linear)"],

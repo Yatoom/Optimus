@@ -191,6 +191,38 @@ class Optimizer:
         # Returns the name of the estimator (e.g. LogisticRegression)
         return type(self.estimator).__name__
 
+    def maximize_classic(self, score_optimum=None, realize=False):
+        start = time.time()
+
+        # Select a sample of parameters
+        sampled_params = ParameterSampler(self.param_distributions, self.draw_samples)
+
+        # Set score optimum
+        if score_optimum is None:
+            score_optimum = self.current_best_score
+
+        # # Determine the best parameters
+        # best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
+
+        best_score = -np.inf
+        best_setting = None
+
+        for setting in sampled_params:
+            setting, score = self._local_search(setting, -np.inf, score_optimum,
+                                                          max_steps=self.ls_max_steps)
+            if score > best_score:
+                best_score = score
+                best_setting = setting
+
+        if realize:
+            best_setting, best_score = self._realize(best_setting, best_score, score_optimum)
+
+        # Store running time
+        running_time = time.time() - start
+        self.maximize_times.append(running_time)
+
+        return best_setting, best_score
+
     def maximize(self, score_optimum=None, realize=False):
         """
         Find the next best hyper-parameter setting to optimizer.

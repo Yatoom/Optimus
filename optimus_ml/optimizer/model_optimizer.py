@@ -11,9 +11,9 @@ from optimus_ml.optimizer.optimizer import Optimizer
 
 class ModelOptimizer(RandomizedSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=150,
+                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=10, # 150
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
-                 max_run_time=1500, simulate_speedup=1, local_search=True, ls_max_steps=np.inf):
+                 max_run_time=1500, simulate_speedup=1, local_search=True, ls_max_steps=np.inf, classic=False):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -104,6 +104,7 @@ class ModelOptimizer(RandomizedSearchCV):
         self.time_regression = time_regression
         self.score_regression = score_regression
         self.max_run_time = max_run_time * self.simulate_speedup
+        self.classic = classic
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -142,7 +143,7 @@ class ModelOptimizer(RandomizedSearchCV):
         if self.random_search:
             self._random_search(X, y, self.n_iter)
         else:
-            self._bayesian_search(X, y, self.n_iter)
+            self._bayesian_search(X, y, self.n_iter, classic=self.classic)
 
         # Store results
         self.cv_results_, self.best_index_, self.best_estimator_ = self.optimizer.create_cv_results()
@@ -204,7 +205,7 @@ class ModelOptimizer(RandomizedSearchCV):
             grid_size *= len(i)
         return grid_size
 
-    def _bayesian_search(self, X, y, n_iter):
+    def _bayesian_search(self, X, y, n_iter, classic=False):
         say("Bayesian search with {} iterations".format(n_iter), self.verbose, style="title")
 
         for i in tqdm(range(0, n_iter), ascii=True, leave=True):
@@ -214,7 +215,11 @@ class ModelOptimizer(RandomizedSearchCV):
                 break
 
             # Find best setting to evaluate
-            setting, ei = self.optimizer.maximize(realize=False)
+            if classic:
+                setting, ei = self.optimizer.maximize_classic(realize=False)
+            else:
+                setting, ei = self.optimizer.maximize(realize=False)
+
             say("Iteration {}/{}. EI: {}".format(i + 1, n_iter, ei), self.verbose, style="subtitle")
 
             # Stop loop if we are out of time
