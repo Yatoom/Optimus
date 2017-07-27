@@ -48,6 +48,7 @@ def rename(scores):
         "Randomized 2X": scores["RANDOMIZED_2X (EI: gp, RT: gp)"],
         "Normal (gp)": scores["NORMAL (EI: gp, RT: gp)"],
         "Classic (gp)": scores["NORMAL_CL (EI: gp, RT: gp)"],
+        "Classic (forest)": scores["NORMAL_CL (EI: forest, RT: gp)"],
         "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
         "Normal (gp) + LS": scores["NORMAL_LS (EI: gp, RT: gp)"],
         "Normal (forest) + LS": scores["NORMAL_LS (EI: forest, RT: gp)"],

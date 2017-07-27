@@ -486,10 +486,8 @@ class Optimizer:
 
         while n_steps <= max_steps:
             neighbors = self._get_neighbors(best_setting)
-            try:
-                new_setting, new_score = self._maximize_on_sample(neighbors, score_optimum)
-            except ValueError:
-                print(neighbors)
+            new_setting, new_score = self._maximize_on_sample(neighbors, score_optimum)
+
             if new_score > best_score:
                 best_score = new_score
                 best_setting = new_setting
@@ -498,8 +496,7 @@ class Optimizer:
 
             n_steps += 1
 
-        # print("{} local search steps".format(n_steps))
-        return new_setting, new_score
+        return best_setting, best_score
 
     def _get_neighbors(self, setting):
         neighbors = []

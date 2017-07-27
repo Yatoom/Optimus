@@ -42,7 +42,7 @@ class Benchmark:
         self.db_table = table
 
     def benchmark(self, method=Method.RANDOMIZED, score_regressor="gp", time_regressor="gp", seed=0, starting_points=5,
-                  verbose=False, local_search=False, classic=True):
+                  verbose=False, local_search=False, classic=False):
         n_iter = self.n_iter
         if method == Method.RANDOMIZED:
             optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, inner_cv=3, n_iter=n_iter,
@@ -80,7 +80,7 @@ class Benchmark:
                 "task": self.task_id,
                 "method": "{}{}{} (EI: {}, RT: {})".format(
                     method.name,
-                    "_LS" if local_search else "",
+                    "_LS_FIXED" if local_search else "",
                     "_CL" if classic else "",
                     score_regressor,
                     time_regressor
