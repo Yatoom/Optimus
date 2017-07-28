@@ -34,7 +34,7 @@ class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
                  time_regression="gp", score_regression="gp", random_state=42, local_search=True,
-                 ls_max_steps=np.inf):
+                 ls_max_steps=np.inf, classic=False, classic_local_search=False):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -103,6 +103,9 @@ class Optimizer:
         self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
         self.ls_max_steps = ls_max_steps
         self.local_search = local_search
+
+        self.classic = classic
+        self.classic_local_search = classic_local_search
 
         # Setup initial values
         self.validated_scores = []
@@ -209,7 +212,7 @@ class Optimizer:
 
         for setting in sampled_params:
             setting, score = self._local_search(setting, -np.inf, score_optimum,
-                                                          max_steps=self.ls_max_steps)
+                                                max_steps=self.ls_max_steps)
             if score > best_score:
                 best_score = score
                 best_setting = setting
@@ -499,6 +502,9 @@ class Optimizer:
         return best_setting, best_score
 
     def _get_neighbors(self, setting):
+        if self.classic_local_search:
+            return self._get_neighbors_classic(setting)
+
         neighbors = []
         params = self.param_distributions
 
@@ -510,6 +516,24 @@ class Optimizer:
                 if val == value:
                     continue
                 neighbor[key] = val
+                neighbors.append(copy.copy(neighbor))
+
+        return neighbors
+
+    def _get_neighbors_classic(self, setting):
+        neighbors = []
+        params = self.param_distributions
+
+        for key, value in setting.items():
+            possible_values = params[key]
+            position_self = possible_values.index(value)
+
+            neighbor = copy.copy(setting)
+            if position_self - 1 >= 0:
+                neighbor[key] = possible_values[position_self - 1]
+                neighbors.append(copy.copy(neighbor))
+            if position_self + 1 < len(possible_values):
+                neighbor[key] = possible_values[position_self + 1]
                 neighbors.append(copy.copy(neighbor))
 
         return neighbors

@@ -78,13 +78,15 @@ class Benchmark:
         for i in range(0, len(results["best_score"])):
             iteration = {
                 "task": self.task_id,
+                # "method": "{}{}{} (EI: {}, RT: {})".format(
+                #     method.name,
+                #     "_LS_FIXED" if local_search else "",
+                #     "_CL" if classic else "",
+                #     score_regressor,
+                #     time_regressor
+                # ),
                 "method": "{}{}{} (EI: {}, RT: {})".format(
-                    method.name,
-                    "_LS_FIXED" if local_search else "",
-                    "_CL" if classic else "",
-                    score_regressor,
-                    time_regressor
-                ),
+                    method.name, "_CL [REAL]", "", score_regressor, time_regressor),
                 "iteration": i,
                 "score": results["mean_test_score"][i],
                 "best_score": results["best_score"][i],

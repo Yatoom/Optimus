@@ -44,23 +44,25 @@ def plot(scores, averaged=False, x_label="", y_label="", title=""):
 
 def rename(scores):
     return {
-        "Randomized": scores["RANDOMIZED (EI: gp, RT: gp)"],
-        "Randomized 2X": scores["RANDOMIZED_2X (EI: gp, RT: gp)"],
+        # "Randomized": scores["RANDOMIZED (EI: gp, RT: gp)"],
+        # "Randomized 2X": scores["RANDOMIZED_2X (EI: gp, RT: gp)"],
         "Normal (gp)": scores["NORMAL (EI: gp, RT: gp)"],
         "Classic (gp)": scores["NORMAL_CL (EI: gp, RT: gp)"],
         "Classic (forest)": scores["NORMAL_CL (EI: forest, RT: gp)"],
         "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
         "Normal (gp) + LS": scores["NORMAL_LS (EI: gp, RT: gp)"],
         "Normal (forest) + LS": scores["NORMAL_LS (EI: forest, RT: gp)"],
-        "Normal (normal forest) + LS": scores["NORMAL_LS (EI: normal forest, RT: gp)"],
-        "EI/s (forest / extra forest)": scores["EI_PER_SECOND (EI: forest, RT: extra forest)"],
-        "EI/s (forest / forest)": scores["EI_PER_SECOND (EI: forest, RT: forest)"],
-        "EI/s (forest / linear)": scores["EI_PER_SECOND (EI: forest, RT: linear)"],
-        "EI/s (gp / gp)": scores["EI_PER_SECOND (EI: gp, RT: gp)"],
-        "EI/s (forest / linear) + LS": scores["EI_PER_SECOND_LS (EI: forest, RT: linear)"],
-        "EI/s (gp / gp) + LS": scores["EI_PER_SECOND_LS (EI: gp, RT: gp)"],
-        "EI/s (gp / extra forest) + LS": scores["EI_PER_SECOND_LS (EI: gp, RT: extra forest)"],
-        "Normal (gp) + LS + PROJ": scores["NORMAL_LS_PROJ (EI: gp, RT: gp)"],
+        "Normal (gp) + LS [Fixed]": scores["NORMAL_LS_FIXED (EI: gp, RT: gp)"],
+        "Normal (forest) + LS [Fixed]": scores["NORMAL_LS_FIXED (EI: forest, RT: gp)"],
+        # "Normal (normal forest) + LS": scores["NORMAL_LS (EI: normal forest, RT: gp)"],
+        # "EI/s (forest / extra forest)": scores["EI_PER_SECOND (EI: forest, RT: extra forest)"],
+        # "EI/s (forest / forest)": scores["EI_PER_SECOND (EI: forest, RT: forest)"],
+        # "EI/s (forest / linear)": scores["EI_PER_SECOND (EI: forest, RT: linear)"],
+        # "EI/s (gp / gp)": scores["EI_PER_SECOND (EI: gp, RT: gp)"],
+        # "EI/s (forest / linear) + LS": scores["EI_PER_SECOND_LS (EI: forest, RT: linear)"],
+        # "EI/s (gp / gp) + LS": scores["EI_PER_SECOND_LS (EI: gp, RT: gp)"],
+        # "EI/s (gp / extra forest) + LS": scores["EI_PER_SECOND_LS (EI: gp, RT: extra forest)"],
+        # "Normal (gp) + LS + PROJ": scores["NORMAL_LS_PROJ (EI: gp, RT: gp)"],
     }
 
 
