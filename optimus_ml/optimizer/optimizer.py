@@ -260,8 +260,9 @@ class Optimizer:
         best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
 
         if self.local_search:
+            max_steps = int(len(self.validated_scores) / 50)
             best_setting, best_score = self._local_search(best_setting, best_score, score_optimum,
-                                                          max_steps=self.ls_max_steps)
+                                                          max_steps=max_steps)
 
         if realize:
             best_setting, best_score = self._realize(best_setting, best_score, score_optimum)
