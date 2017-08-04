@@ -260,7 +260,8 @@ class Optimizer:
         best_setting, best_score = self._maximize_on_sample(sampled_params, score_optimum)
 
         if self.local_search:
-            max_steps = int(len(self.validated_scores) / 50)
+            # max_steps = int(len(self.validated_scores) / 50)
+            max_steps = np.inf
             best_setting, best_score = self._local_search(best_setting, best_score, score_optimum,
                                                           max_steps=max_steps)
 
@@ -645,7 +646,7 @@ class Optimizer:
         # Subtract each item in list by score_optimum
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
         # (2.3.2 Exploration-exploitation trade-of)
-        diff = mu - (score_optimum - 0.01)
+        diff = mu - (score_optimum - 0.1)
 
         # Divide each diff by each sigma
         Z = diff / sigma
