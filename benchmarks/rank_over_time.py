@@ -51,6 +51,7 @@ def rename(scores):
         "Classic (forest)": scores["NORMAL_CL (EI: forest, RT: gp)"],
         "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
         "Normal (gp) + LS": scores["NORMAL_LS (EI: gp, RT: gp)"],
+        "Normal(gp) + LS (-0.05)": scores["NORMAL_LS (-0.05) (EI: gp, RT: gp)"],
         "Normal (gp) + LLS": scores["NORMAL_LLS (EI: gp, RT: gp)"],
         "Normal (forest) + LS": scores["NORMAL_LS (EI: forest, RT: gp)"],
         "Normal (gp) + LS [Fixed]": scores["NORMAL_LS_FIXED (EI: gp, RT: gp)"],
