@@ -86,7 +86,7 @@ class Benchmark:
                 #     time_regressor
                 # ),
                 "method": "{}{}{} (EI: {}, RT: {})".format(
-                    method.name, "_LS (-0.1)", "", score_regressor, time_regressor),
+                    method.name, "_LS (-0.025)", "", score_regressor, time_regressor),
                 "iteration": i,
                 "score": results["mean_test_score"][i],
                 "best_score": results["best_score"][i],
