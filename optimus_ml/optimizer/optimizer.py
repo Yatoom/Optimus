@@ -646,7 +646,7 @@ class Optimizer:
         # Subtract each item in list by score_optimum
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
         # (2.3.2 Exploration-exploitation trade-of)
-        diff = mu - (score_optimum - 0.025)
+        diff = mu - (score_optimum - np.var(self.validated_scores))
 
         # Divide each diff by each sigma
         Z = diff / sigma

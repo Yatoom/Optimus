@@ -10,22 +10,27 @@ default_tasks = [12, 14, 16, 20, 22, 28, 32, 45, 58]
 
 def multiplot():
     # Ranking
-    scores = get_method_ranking(seeds=default_seeds, max_time=1500, tasks=default_tasks)
-    plot(rename(scores), y_label="mean of method ranking over different tasks", x_label="time(s)",
+    # scores = get_method_ranking(seeds=default_seeds, max_time=1500, tasks=default_tasks)
+    # plot(rename(scores), y_label="mean of method ranking over different tasks", x_label="time(s)",
+    #      title="Comparison of different classifiers for calculating expected improvement and expected running time.")
+
+    # Scores
+    scores = get_method_average(seeds=default_seeds, max_time=1500, tasks=default_tasks)
+    plot(rename(scores), y_label="mean score over different tasks", x_label="time(s)",
          title="Comparison of different classifiers for calculating expected improvement and expected running time.")
 
     # Speed (iterations over time)
-    scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="iteration", tasks=default_tasks)
-    plot(rename(scores), y_label="iterations", x_label="time(s)", title="Speed of different methods")
+    # scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="iteration", tasks=default_tasks)
+    # plot(rename(scores), y_label="iterations", x_label="time(s)", title="Speed of different methods")
 
     # Evaluation time
-    scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="evaluation_time", tasks=default_tasks)
-    plot(rename(scores), y_label="evaluation time (moving average)", x_label="time(s)",
-         title="Evaluation time of different methods", averaged=True)
+    # scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="evaluation_time", tasks=default_tasks)
+    # plot(rename(scores), y_label="evaluation time (moving average)", x_label="time(s)",
+    #      title="Evaluation time of different methods", averaged=True)
 
     # Maximize time
-    scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="maximize_time", tasks=default_tasks)
-    plot(rename(scores), y_label="maximization time", x_label="time(s)", title="Maximization time of different methods")
+    # scores = get_method_average(seeds=default_seeds, max_time=1500, score_key="maximize_time", tasks=default_tasks)
+    # plot(rename(scores), y_label="maximization time", x_label="time(s)", title="Maximization time of different methods")
 
 
 def plot(scores, averaged=False, x_label="", y_label="", title=""):
@@ -46,18 +51,19 @@ def rename(scores):
     return {
         # "Randomized": scores["RANDOMIZED (EI: gp, RT: gp)"],
         # "Randomized 2X": scores["RANDOMIZED_2X (EI: gp, RT: gp)"],
-        "Normal (gp)": scores["NORMAL (EI: gp, RT: gp)"],
-        "Classic (gp)": scores["NORMAL_CL (EI: gp, RT: gp)"],
-        "Classic (forest)": scores["NORMAL_CL (EI: forest, RT: gp)"],
-        "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
-        "Normal (gp) + LS": scores["NORMAL_LS (EI: gp, RT: gp)"],
+        # "Normal (gp)": scores["NORMAL (EI: gp, RT: gp)"],
+        # "Classic (gp)": scores["NORMAL_CL (EI: gp, RT: gp)"],
+        # "Classic (forest)": scores["NORMAL_CL (EI: forest, RT: gp)"],
+        # "Normal (forest)": scores["NORMAL (EI: forest, RT: gp)"],
+        # "Normal (gp) + LS": scores["NORMAL_LS (EI: gp, RT: gp)"],
         "Normal(gp) + LS (-0.05)": scores["NORMAL_LS (-0.05) (EI: gp, RT: gp)"],
+        "Normal(gp) + LS (-0.025)": scores["NORMAL_LS (-0.025) (EI: gp, RT: gp)"],
         "Normal(gp) + LS (-0.1)": scores["NORMAL_LS (-0.1) (EI: gp, RT: gp)"],
-        "Normal (gp) + LLS": scores["NORMAL_LLS (EI: gp, RT: gp)"],
-        "Normal (forest) + LS": scores["NORMAL_LS (EI: forest, RT: gp)"],
+        # "Normal (gp) + LLS": scores["NORMAL_LLS (EI: gp, RT: gp)"],
+        # "Normal (forest) + LS": scores["NORMAL_LS (EI: forest, RT: gp)"],
         "Normal (gp) + LS [Fixed]": scores["NORMAL_LS_FIXED (EI: gp, RT: gp)"],
-        "Normal (forest) + LS [Fixed]": scores["NORMAL_LS_FIXED (EI: forest, RT: gp)"],
-        "Classic Real (gp)": scores["NORMAL_CL [REAL] (EI: gp, RT: gp)"],
+        # "Normal (forest) + LS [Fixed]": scores["NORMAL_LS_FIXED (EI: forest, RT: gp)"],
+        # "Classic Real (gp)": scores["NORMAL_CL [REAL] (EI: gp, RT: gp)"],
         # "Normal (normal forest) + LS": scores["NORMAL_LS (EI: normal forest, RT: gp)"],
         # "EI/s (forest / extra forest)": scores["EI_PER_SECOND (EI: forest, RT: extra forest)"],
         # "EI/s (forest / forest)": scores["EI_PER_SECOND (EI: forest, RT: forest)"],
