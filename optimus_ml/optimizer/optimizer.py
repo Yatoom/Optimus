@@ -26,6 +26,7 @@ from optimus_ml.extra.timeout import Timeout
 from optimus_ml.optimizer.builder import Builder
 # from optimus_ml.optimizer.converter import Converter
 from optimus_ml.transcoder import converter
+from smac.epm.rf_with_instances import RandomForestWithInstances
 
 warnings.filterwarnings("ignore")
 
@@ -159,6 +160,7 @@ class Optimizer:
                                              random_state=random_state)
 
         # Setup score regressor (for predicting EI)
+        self.score_regression = score_regression
         if score_regression == "forest":
             self.score_regressor = get_random_forest_regressor()
         elif score_regression == "extra forest":
@@ -167,6 +169,11 @@ class Optimizer:
             self.score_regressor = get_gaussian_process_regressor()
         elif score_regression == "normal forest":
             self.score_regressor = get_norm_forest_regressor()
+        elif score_regression == "SMAC-forest":
+            params = self.param_distributions
+            bounds = np.array([[0.0, float(len(j))] for i, j in params.items()])
+            types = np.array([0 for _ in params])
+            self.score_regressor = RandomForestWithInstances(bounds=bounds, types=types)
         else:
             raise ValueError("The value '{}' is not a valid value for 'score_regression'".format(score_regression))
 
@@ -567,7 +574,11 @@ class Optimizer:
             return original
 
         converted_settings = converter.settings_to_indices(params, self.param_distributions)
-        self.score_regressor.fit(converted_settings, scores)
+
+        if self.score_regression == "SMAC-forest":
+            self.score_regressor.train(np.array(converted_settings).astype(float), scores)
+        else:
+            self.score_regressor.fit(converted_settings, scores)
 
         if self.use_ei_per_second:
             times, _ = converter.remove_timeouts(self.evaluation_times, self.validated_scores, self.timeout_score)
@@ -668,14 +679,22 @@ class Optimizer:
 
         # Try to fit score regressor (and time regressor)
         try:
-            self.score_regressor.fit(params, scores)
+            if self.score_regression == "SMAC-forest":
+                self.score_regressor.train(np.array(params).astype(float), np.array(scores))
+            else:
+                self.score_regressor.fit(params, scores)
+
             if self.use_ei_per_second:
                 self.time_regressor.fit(params, times)
         except:
             print(traceback.format_exc())
 
     def _predict_score(self, points):
-        mu, sigma = self.score_regressor.predict(points, return_std=True)
+        if self.score_regression == "SMAC-forest":
+            mu, var = self.score_regressor.predict(np.array(points).astype(float))
+            mu, sigma = mu, np.sqrt(var)
+        else:
+            mu, sigma = self.score_regressor.predict(points, return_std=True)
         return mu, sigma
 
     def _predict_time(self, points):

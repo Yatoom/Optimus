@@ -188,7 +188,7 @@ class MultiOptimizer(BaseSearchCV):
                 # Retry a few times to find a parameter that can be evaluated within max_eval_time.
                 success = False
                 for i in range(0, max_retries):
-                    setting, ei = optimizer.maximize()
+                    setting, ei = optimizer.maximize_single_start()
                     success, score, running_time = optimizer.evaluate(setting, X, y)
                     self._store_trace(optimizer, setting, score)
 
@@ -262,7 +262,7 @@ class MultiOptimizer(BaseSearchCV):
         best_optimizer = None
         for optimizer in self.optimizers:
 
-            setting, ei = optimizer.maximize(score_optimum=self.global_best_score)
+            setting, ei = optimizer.maximize_single_start(score_optimum=self.global_best_score)
 
             if ei > best_ei:
                 best_ei = ei
