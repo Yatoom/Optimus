@@ -34,7 +34,7 @@ class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
                  time_regression="gp", score_regression="gp", random_state=42, local_search=True,
-                 ls_max_steps=np.inf, classic=False, classic_local_search=False):
+                 ls_max_steps=np.inf, close_neighbors_only=False):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -104,8 +104,7 @@ class Optimizer:
         self.ls_max_steps = ls_max_steps
         self.local_search = local_search
 
-        self.classic = classic
-        self.classic_local_search = classic_local_search
+        self.close_neighbors_only = close_neighbors_only
 
         # Setup initial values
         self.validated_scores = []
@@ -194,7 +193,7 @@ class Optimizer:
         # Returns the name of the estimator (e.g. LogisticRegression)
         return type(self.estimator).__name__
 
-    def maximize_classic(self, score_optimum=None, realize=False):
+    def maximize_multi_start(self, score_optimum=None, realize=False):
         start = time.time()
 
         # Select a sample of parameters
@@ -226,7 +225,7 @@ class Optimizer:
 
         return best_setting, best_score
 
-    def maximize(self, score_optimum=None, realize=False):
+    def maximize_single_start(self, score_optimum=None, realize=False):
         """
         Find the next best hyper-parameter setting to optimizer.
 
@@ -490,7 +489,7 @@ class Optimizer:
         n_steps = 0
 
         while n_steps <= max_steps:
-            neighbors = self._get_neighbors(best_setting)
+            neighbors = self._get_neighborhood(best_setting)
             new_setting, new_score = self._maximize_on_sample(neighbors, score_optimum)
 
             if new_score > best_score:
@@ -503,9 +502,9 @@ class Optimizer:
 
         return best_setting, best_score
 
-    def _get_neighbors(self, setting):
-        if self.classic_local_search:
-            return self._get_neighbors_classic(setting)
+    def _get_neighborhood(self, setting):
+        if self.close_neighbors_only:
+            return self._get_neighbors(setting)
 
         neighbors = []
         params = self.param_distributions
@@ -522,7 +521,7 @@ class Optimizer:
 
         return neighbors
 
-    def _get_neighbors_classic(self, setting):
+    def _get_neighbors(self, setting):
         neighbors = []
         params = self.param_distributions
 

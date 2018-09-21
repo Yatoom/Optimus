@@ -11,10 +11,10 @@ from optimus_ml.optimizer.optimizer import Optimizer
 
 class ModelOptimizer(RandomizedSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=10, # 150
+                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=10,  # 150
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
-                 max_run_time=1500, simulate_speedup=1, local_search=True, ls_max_steps=np.inf, classic=True,
-                 classic_local_search=True):
+                 max_run_time=1500, simulate_speedup=1, local_search=True, ls_max_steps=np.inf, multi_start=True,
+                 close_neighbors_only=True):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -105,8 +105,8 @@ class ModelOptimizer(RandomizedSearchCV):
         self.time_regression = time_regression
         self.score_regression = score_regression
         self.max_run_time = max_run_time * self.simulate_speedup
-        self.classic = classic
-        self.classic_local_search = classic_local_search
+        self.multi_start = multi_start
+        self.close_neighbors_only = close_neighbors_only
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -217,10 +217,10 @@ class ModelOptimizer(RandomizedSearchCV):
                 break
 
             # Find best setting to evaluate
-            if self.classic:
-                setting, ei = self.optimizer.maximize_classic(realize=False)
+            if self.multi_start:
+                setting, ei = self.optimizer.maximize_multi_start(realize=False)
             else:
-                setting, ei = self.optimizer.maximize(realize=False)
+                setting, ei = self.optimizer.maximize_single_start(realize=False)
 
             say("Iteration {}/{}. EI: {}".format(i + 1, n_iter, ei), self.verbose, style="subtitle")
 
@@ -302,5 +302,4 @@ class ModelOptimizer(RandomizedSearchCV):
                                    score_regression=self.score_regression,
                                    local_search=self.local_search,
                                    ls_max_steps=self.ls_max_steps,
-                                   classic=self.classic,
-                                   classic_local_search=self.classic_local_search)
+                                   close_neighbors_only=self.close_neighbors_only)
