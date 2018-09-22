@@ -365,6 +365,9 @@ def reconstruct_value(o):
     elif isinstance(o, dict) and "source" in o and "params" in o:
         return _decode_source(o["source"], **o["params"])
 
+    elif isinstance(o, list):
+        return [reconstruct_value(i) for i in o]
+
     return None
 
 

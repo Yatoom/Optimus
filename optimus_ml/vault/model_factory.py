@@ -11,7 +11,7 @@ def generate_config(X, categorical, random_state):
 
     # Pre-processing operators
     DI = {
-        "source": "extra.dual_imputer.DualImputer",
+        "source": "optimus_ml.extra.dual_imputer.DualImputer",
         "params": {"categorical": categorical}
     }
 
