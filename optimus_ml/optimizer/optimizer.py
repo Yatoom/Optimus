@@ -489,7 +489,6 @@ class Optimizer:
         best_index = np.argmax(scores)  # type: int
         best_score = scores[best_index]
         best_setting = sampled_params_list[best_index]
-
         return best_setting, best_score
 
     def _local_search(self, best_setting, best_score, score_optimum, max_steps=np.inf):
@@ -656,7 +655,8 @@ class Optimizer:
         # Subtract each item in list by score_optimum
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
         # (2.3.2 Exploration-exploitation trade-of)
-        diff = mu - (score_optimum - np.var(self.validated_scores))
+        xi = 0
+        diff = mu - score_optimum - xi
 
         # Divide each diff by each sigma
         Z = diff / sigma
