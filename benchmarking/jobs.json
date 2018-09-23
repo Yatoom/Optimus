@@ -1,0 +1,74 @@
+[
+  {
+    "name": "GP",
+    "label": "GP",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "GP",
+    "label": "GP (ξ = 0.001)",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0.001
+  },
+  {
+    "name": "GP",
+    "label": "GP (ξ = 0.01)",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0.01
+  },
+  {
+    "name": "GP",
+    "label": "GP (ξ = 0.1)",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0.1
+  },
+  {
+    "name": "SMAC",
+    "label": "SMAC Forest",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "score_regression": "SMAC-forest",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "SMAC",
+    "label": "SMAC Forest EIPS",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "use_ei_per_second": true,
+    "score_regression": "SMAC-forest",
+    "time_regression": "lightgbm",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "Randomized",
+    "label": "Randomized",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "random_search": true
+  },
+  {
+    "name": "Randomized 2x",
+    "label": "Randomized 2x",
+    "seeds": [2589731706, 2382469894, 3544753667],
+    "starting_points": 5,
+    "random_search": true,
+    "simulate_speedup": 2
+  }
+
+]

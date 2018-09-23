@@ -11,10 +11,10 @@ from optimus_ml.optimizer.optimizer import Optimizer
 
 class ModelOptimizer(RandomizedSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=False, draw_samples=10,  # 150
+                 max_eval_time=120, use_ei_per_second=False, verbose=False, draw_samples=500,
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
                  max_run_time=1500, simulate_speedup=1, local_search=True, ls_max_steps=np.inf, multi_start=True,
-                 close_neighbors_only=True):
+                 close_neighbors_only=True, xi=0):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
         
@@ -81,6 +81,9 @@ class ModelOptimizer(RandomizedSearchCV):
 
         ls_max_steps: float
             Maximum number of steps to do in local search
+
+        xi: float
+            Parameter of EI that controls the exploitation-exploration trade-off
         """
 
         # Call to super
@@ -99,7 +102,6 @@ class ModelOptimizer(RandomizedSearchCV):
         self.timeout_score = timeout_score
         self.max_eval_time = max_eval_time
         self.use_ei_per_second = use_ei_per_second
-        self.use_root_second = use_root_second
         self.verbose = verbose
         self.random_search = random_search
         self.time_regression = time_regression
@@ -107,6 +109,7 @@ class ModelOptimizer(RandomizedSearchCV):
         self.max_run_time = max_run_time * self.simulate_speedup
         self.multi_start = multi_start
         self.close_neighbors_only = close_neighbors_only
+        self.xi = xi
 
         # Placeholders for derived variables
         self.draw_samples = draw_samples
@@ -298,8 +301,9 @@ class ModelOptimizer(RandomizedSearchCV):
                                    max_eval_time=int(self.max_eval_time * self.simulate_speedup),
                                    use_ei_per_second=self.use_ei_per_second,
                                    verbose=self.verbose, draw_samples=self.draw_samples,
-                                   use_root_second=self.use_root_second, time_regression=self.time_regression,
+                                   time_regression=self.time_regression,
                                    score_regression=self.score_regression,
                                    local_search=self.local_search,
                                    ls_max_steps=self.ls_max_steps,
-                                   close_neighbors_only=self.close_neighbors_only)
+                                   close_neighbors_only=self.close_neighbors_only,
+                                   xi=self.xi)

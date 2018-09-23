@@ -6,6 +6,8 @@ import numpy as np
 import copy
 import os
 
+from lightgbm import LGBMRegressor
+
 from optimus_ml.extra.pipeline import make_pipeline
 from sklearn.preprocessing import Normalizer
 from sklearn.random_projection import GaussianRandomProjection
@@ -33,9 +35,9 @@ warnings.filterwarnings("ignore")
 
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
-                 max_eval_time=120, use_ei_per_second=False, use_root_second=True, verbose=True, draw_samples=100,
+                 max_eval_time=120, use_ei_per_second=False, verbose=True, draw_samples=500,
                  time_regression="gp", score_regression="gp", random_state=42, local_search=True,
-                 ls_max_steps=np.inf, close_neighbors_only=False):
+                 ls_max_steps=np.inf, close_neighbors_only=False, xi=0):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   
@@ -89,9 +91,13 @@ class Optimizer:
 
         ls_max_steps: float
             Maximum number of steps to do in local search
+
+        xi: float
+            Parameter of EI that controls the exploitation-exploration trade-off
         """
 
         # Accept parameters
+        self.xi = xi
         self.estimator = estimator
         self.param_distributions = param_distributions
         self.inner_cv = inner_cv
@@ -99,7 +105,6 @@ class Optimizer:
         self.timeout_score = timeout_score
         self.max_eval_time = max_eval_time
         self.use_ei_per_second = use_ei_per_second
-        self.use_root_second = use_root_second
         self.verbose = verbose
         self.draw_samples = min(draw_samples, self.get_grid_size(param_distributions))
         self.ls_max_steps = ls_max_steps
@@ -193,6 +198,8 @@ class Optimizer:
                 self.time_regressor = get_adaboost_regressor()
             elif time_regression == "normal forest":
                 self.time_regressor = get_norm_forest_regressor()
+            elif time_regression == "lightgbm":
+                self.time_regressor = LGBMRegressor(max_depth=3, objective="rmse", verbose=-1, n_estimators=100)
             else:
                 raise ValueError("The value '{}' is not a valid value for 'time_regression'".format(time_regression))
 
@@ -621,14 +628,11 @@ class Optimizer:
 
             # Some algorithms, such as Linear Regression, predict negative values for the running time. In that case,
             # we take the lowest evaluation time we have observed so far
-            for index, value in enumerate(running_times):
-                if value <= 0:
-                    running_times[index] = np.min(self.evaluation_times)
+            # for index, value in enumerate(running_times):
+            #     if value <= 0:
+            #         running_times[index] = np.min(self.evaluation_times)
 
-            if self.use_root_second:
-                return eis / np.sqrt(running_times)
-
-            return eis / running_times
+            return eis / np.log(running_times + 1)
 
         return eis
 
@@ -655,8 +659,7 @@ class Optimizer:
         # Subtract each item in list by score_optimum
         # We subtract 0.01 because http://haikufactory.com/files/bayopt.pdf
         # (2.3.2 Exploration-exploitation trade-of)
-        xi = 0
-        diff = mu - score_optimum - xi
+        diff = mu - score_optimum - self.xi
 
         # Divide each diff by each sigma
         Z = diff / sigma
