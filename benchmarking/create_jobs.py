@@ -3,7 +3,7 @@ import os
 
 python_path = "/home/jhoof/python/python36/bin/python3"
 project_dir = "/home/jhoof/Optimus"
-config = "#PBS -lwalltime=1:00:00 -lnodes=1:cores4:cpu3:"
+config = "#PBS -lwalltime=1:00:00 -lnodes=1:cpu3"
 tasks = [12, 14, 16, 20, 22, 28, 32, 41, 45, 58]
 # seeds = [2589731706, 2382469894, 3544753667]
 seeds = [2589731706]
