@@ -36,8 +36,8 @@ warnings.filterwarnings("ignore")
 class Optimizer:
     def __init__(self, estimator, param_distributions, inner_cv=10, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, verbose=True, draw_samples=500,
-                 time_regression="gp", score_regression="gp", random_state=42, local_search=True,
-                 ls_max_steps=np.inf, close_neighbors_only=False, xi=0):
+                 time_regression="gp", score_regression="gp", random_state=42, local_search=False,
+                 ls_max_steps=np.inf, close_neighbors_only=True, xi=0):
         """
         An optimizer that provides a method to find the next best parameter setting and its expected improvement, and a 
         method to evaluate that parameter setting and keep its results.   

@@ -1,13 +1,7 @@
 from pymongo import MongoClient
-import openml
-
-# Setup API key
-openml.config.apikey = "YOUR_API_KEY"
-
 
 # Connect to database
 def connect():
-    db = MongoClient('mongodb://<URI>')
-    table = db.optimus.Benchmark
-
+    db = MongoClient('mongodb://optimus:optimus1@ds213053.mlab.com:13053/optimus_2018')
+    table = db.optimus_2018.Lisa
     return db, table

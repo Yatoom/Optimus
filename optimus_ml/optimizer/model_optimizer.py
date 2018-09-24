@@ -13,7 +13,7 @@ class ModelOptimizer(RandomizedSearchCV):
     def __init__(self, estimator, encoded_params, inner_cv: object = None, scoring="accuracy", timeout_score=0,
                  max_eval_time=120, use_ei_per_second=False, verbose=False, draw_samples=500,
                  n_iter=100, refit=True, random_search=False, time_regression="linear", score_regression="forest",
-                 max_run_time=1500, simulate_speedup=1, local_search=True, ls_max_steps=np.inf, multi_start=True,
+                 max_run_time=1500, simulate_speedup=1, local_search=False, ls_max_steps=np.inf, multi_start=False,
                  close_neighbors_only=True, xi=0):
         """
         An optimizer using Gaussian Processes for optimizing a single model. 
