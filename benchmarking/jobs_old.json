@@ -1,0 +1,56 @@
+[
+  {
+    "name": "GP",
+    "label": "GP",
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "GP",
+    "label": "GP (ξ = 0.001)",
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0.001
+  },
+  {
+    "name": "GP",
+    "label": "GP (ξ = 0.01)",
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0.01
+  },
+  {
+    "name": "GP",
+    "label": "GP (ξ = 0.1)",
+    "starting_points": 5,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0.1
+  },
+  {
+    "name": "SMAC",
+    "label": "SMAC Forest",
+    "starting_points": 5,
+    "score_regression": "SMAC-forest",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "Randomized",
+    "label": "Randomized",
+    "starting_points": 5,
+    "random_search": true
+  },
+  {
+    "name": "Randomized 2x",
+    "label": "Randomized 2x",
+    "starting_points": 5,
+    "random_search": true,
+    "simulate_speedup": 2
+  }
+
+]
