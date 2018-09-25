@@ -31,21 +31,21 @@ class Benchmarker:
         db, table = config.connect()
         self.db_table = table
 
-    def benchmark(self, name, label, seeds, starting_points, **optimizer_args):
-        for seed in seeds:
-            optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, n_iter=self.n_iter,
-                                       inner_cv=3, max_run_time=1500, **optimizer_args)
+    def benchmark(self, name, label, seed, starting_points, store_results=True, **optimizer_args):
+        optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, n_iter=self.n_iter,
+                                   inner_cv=3, max_run_time=1500, **optimizer_args)
 
-            optimizer.inner_cv = self.openml_splits
+        optimizer.inner_cv = self.openml_splits
 
-            # Let the first few points be always the same
-            optimizer._setup()
-            optimizer._random_search(self.X, self.y, starting_points, seed=seed)
-            optimizer.fit(self.X, self.y, skip_setup=True)
+        # Let the first few points be always the same
+        optimizer._setup()
+        optimizer._random_search(self.X, self.y, starting_points, seed=seed)
+        optimizer.fit(self.X, self.y, skip_setup=True)
 
-            results = optimizer.cv_results_
+        results = optimizer.cv_results_
 
-            # Store results
+        # Store results
+        if store_results:
             for i in range(0, len(results["best_score"])):
                 iteration = {
                     "task": self.task_id,

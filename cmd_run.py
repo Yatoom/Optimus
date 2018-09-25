@@ -15,4 +15,4 @@ with open(filename, "r+") as f:
     job = json.load(f)[config_index]
 
 b = Benchmarker(task, 10000)
-b.benchmark(**job)
+b.benchmark(seed=seed, **job)
