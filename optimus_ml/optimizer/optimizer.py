@@ -199,7 +199,7 @@ class Optimizer:
             elif time_regression == "normal forest":
                 self.time_regressor = get_norm_forest_regressor()
             elif time_regression == "lightgbm":
-                self.time_regressor = LGBMRegressor(max_depth=3, objective="rmse", verbose=-1, n_estimators=100)
+                self.time_regressor = LGBMRegressor(max_depth=3, objective="rmse", verbose=-1, n_estimators=100, min_child_samples=1)
             else:
                 raise ValueError("The value '{}' is not a valid value for 'time_regression'".format(time_regression))
 
@@ -574,32 +574,12 @@ class Optimizer:
         Returns the realistic estimate
         """
 
-        params, scores = converter.remove_timeouts(self.validated_params, self.validated_scores, self.timeout_score)
-
-        if len(scores) == 0:
-            return original
-
-        converted_settings = converter.settings_to_indices(params, self.param_distributions)
-
-        if self.score_regression == "SMAC-forest":
-            self.score_regressor.train(np.array(converted_settings).astype(float), scores)
-        else:
-            self.score_regressor.fit(converted_settings, scores)
-
-        if self.use_ei_per_second:
-            times, _ = converter.remove_timeouts(self.evaluation_times, self.validated_scores, self.timeout_score)
-            self.time_regressor.fit(converted_settings, times)
-
-        setting = converter.setting_to_indices(best_setting, self.param_distributions)
-
-        return self._get_ei_per_second(setting, score_optimum)
-
-    def _get_ei_per_second(self, point, score_optimum):
-        """
-        Wrapper for _get_eis_per_second()
-        """
-        eis = self._get_eis_per_second([point], score_optimum)
-        return eis[0]
+    # def _get_ei_per_second(self, point, score_optimum):
+    #     """
+    #     Wrapper for _get_eis_per_second()
+    #     """
+    #     eis = self._get_eis_per_second([point], score_optimum)
+    #     return eis[0]
 
     def _get_eis_per_second(self, points, score_optimum):
         """
@@ -619,7 +599,7 @@ class Optimizer:
         Return the Expected Improvements (per (root) second)
         """
 
-        eis = self._get_eis(points, score_optimum)
+        eis = self._get_eis(points, score_optimum).reshape(-1)
 
         if self.use_ei_per_second:
 
@@ -675,29 +655,33 @@ class Optimizer:
         return ei
 
     def _fit(self, params, scores, times, remove_timeouts=False):
+        params_array = np.array(params).astype(float)
+        scores_array = np.array(scores).astype(float)
 
         # Remove timeouts if desired
         if remove_timeouts:
-            params, scores = converter.remove_timeouts(params, scores, self.timeout_score)
+            params_array, scores_array = converter.remove_timeouts(params_array, scores_array, self.timeout_score)
 
         # Try to fit score regressor (and time regressor)
         try:
             if self.score_regression == "SMAC-forest":
-                self.score_regressor.train(np.array(params).astype(float), np.array(scores))
+                self.score_regressor.train(params_array, scores_array)
             else:
-                self.score_regressor.fit(params, scores)
+                self.score_regressor.fit(params_array, scores_array)
 
             if self.use_ei_per_second:
-                self.time_regressor.fit(params, times)
+                self.time_regressor.fit(params_array, scores_array)
         except:
             print(traceback.format_exc())
 
     def _predict_score(self, points):
+        points_array = np.array(points).astype(float)
+
         if self.score_regression == "SMAC-forest":
-            mu, var = self.score_regressor.predict(np.array(points).astype(float))
+            mu, var = self.score_regressor.predict(points_array)
             mu, sigma = mu, np.sqrt(var)
         else:
-            mu, sigma = self.score_regressor.predict(points, return_std=True)
+            mu, sigma = self.score_regressor.predict(points_array, return_std=True)
         return mu, sigma
 
     def _predict_time(self, points):

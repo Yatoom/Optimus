@@ -421,7 +421,7 @@ def remove_timeouts(parameters, scores, timeout_score=0):
     """
 
     params = copy.copy(parameters)
-    mask = (np.array(scores) != timeout_score).tolist()
-    params = np.array(params)[mask].tolist()
-    scores = np.array(scores)[mask].tolist()
+    mask = (np.array(scores) != timeout_score)
+    params = np.array(params)[mask]
+    scores = np.array(scores)[mask]
     return params, scores
