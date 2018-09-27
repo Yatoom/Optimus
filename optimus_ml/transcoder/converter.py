@@ -1,8 +1,10 @@
 import copy
+import time
 import warnings
 
 import numpy as np
 import pandas as pd
+from attr import dataclass
 
 
 def grid_to_json(grid):
@@ -138,14 +140,21 @@ def reconstruct_setting(o):
 
     return converted
 
+@dataclass
+class Data:
+    frame: pd.DataFrame
+    data: np.array
+    length: int
+    param_bounds: dict
+    bounds: np.array
 
 def to_string(i):
     return type(i).__name__ if type(i) != str else i
 
-
 def settings_to_dummies(param_options, settings):
     types = {key: pd.Series(values).dtype for key, values in param_options.items()}
     result = {}
+    param_bounds = {}
     for key, typ in types.items():
         if typ == object or None in param_options[key]:
             options = [to_string(i) for i in param_options[key]]
@@ -160,16 +169,27 @@ def settings_to_dummies(param_options, settings):
                 one_hot[position, index] = 1
 
             converted = {name: one_hot[index] for index, name in enumerate(names)}
+            param_bounds.update({name: (0, 1) for name in names})
             result.update(converted)
         elif typ == bool:
             name = key
             params = [int(i[key]) for i in settings]
             result.update({name: params})
+            param_bounds[name] = (0, 1)
         else:
             name = key
             params = [i[key] for i in settings]
             result.update({name: params})
-    return len(result), np.array(pd.DataFrame(result))
+            param_bounds[name] = (param_options[key][0], param_options[key][-1])
+
+    frame = pd.DataFrame(result)
+    data = np.array(frame)
+    length = len(result)
+    bounds = np.array(list(param_bounds.values()))
+
+    d = Data(data=data, length=length, param_bounds=param_bounds, bounds=bounds, frame=frame)
+    assert(len(d.bounds) == length)
+    return d
 
 
 def settings_to_indices(settings, param_distributions, robust=False):

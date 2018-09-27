@@ -100,7 +100,9 @@ class Optimizer:
         self.xi = xi
         self.estimator = estimator
         self.param_distributions = param_distributions
-        self.data_length, _ = converter.settings_to_dummies(param_distributions, [])
+        data = converter.settings_to_dummies(param_distributions, [])
+        self.data_length = data.length
+        self.data_bounds = data.bounds
         self.inner_cv = inner_cv
         self.scoring = scoring
         self.timeout_score = timeout_score
@@ -176,9 +178,8 @@ class Optimizer:
         elif score_regression == "normal forest":
             self.score_regressor = get_norm_forest_regressor()
         elif score_regression == "SMAC-forest":
-            params = self.param_distributions
-            bounds = np.array([[0.0, float(len(j))] for i, j in params.items()])
-            types = np.array([0 for _ in params])
+            bounds = self.data_bounds
+            types = np.array([0 for _ in range(self.data_length)])
             self.score_regressor = RandomForestWithInstances(bounds=bounds, types=types)
         else:
             raise ValueError("The value '{}' is not a valid value for 'score_regression'".format(score_regression))
@@ -371,8 +372,8 @@ class Optimizer:
         score = np.mean(score)  # type: float
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
-        _, self.converted_params = converter.settings_to_dummies(
-            settings=self.validated_params, param_options=self.param_distributions)
+        self.converted_params = converter.settings_to_dummies(
+            settings=self.validated_params, param_options=self.param_distributions).data
 
         self.current_best_score = max(score, self.current_best_score)
         self.best_scores.append(self.current_best_score)
@@ -492,8 +493,8 @@ class Optimizer:
 
         self._fit(self.converted_params, self.validated_scores, self.evaluation_times, remove_timeouts=False)
 
-        _, converted_settings = converter.settings_to_dummies(settings=sampled_params_list,
-                                                           param_options=self.param_distributions)
+        converted_settings = converter.settings_to_dummies(settings=sampled_params_list,
+                                                           param_options=self.param_distributions).data
         scores = self._get_eis_per_second(converted_settings, score_optimum)
         best_index = np.argmax(scores)  # type: int
         best_score = scores[best_index]
