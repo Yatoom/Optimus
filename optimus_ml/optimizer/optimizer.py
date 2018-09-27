@@ -100,6 +100,7 @@ class Optimizer:
         self.xi = xi
         self.estimator = estimator
         self.param_distributions = param_distributions
+        self.data_length, _ = converter.settings_to_dummies(param_distributions, [])
         self.inner_cv = inner_cv
         self.scoring = scoring
         self.timeout_score = timeout_score
@@ -127,8 +128,8 @@ class Optimizer:
         def get_gaussian_process_regressor():
             cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
             other_kernel = Matern(
-                length_scale=np.ones(len(self.param_distributions)),
-                length_scale_bounds=[(0.01, 100)] * len(self.param_distributions),
+                length_scale=np.ones(self.data_length),
+                length_scale_bounds=[(0.01, 100)] * self.data_length,
                 nu=2.5)
 
             return GaussianProcessRegressor(
@@ -370,7 +371,8 @@ class Optimizer:
         score = np.mean(score)  # type: float
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
-        self.converted_params = converter.settings_to_indices(self.validated_params, self.param_distributions)
+        _, self.converted_params = converter.settings_to_dummies(
+            settings=self.validated_params, param_options=self.param_distributions)
 
         self.current_best_score = max(score, self.current_best_score)
         self.best_scores.append(self.current_best_score)
@@ -490,8 +492,8 @@ class Optimizer:
 
         self._fit(self.converted_params, self.validated_scores, self.evaluation_times, remove_timeouts=False)
 
-        converted_settings = converter.settings_to_indices(sampled_params_list,
-                                                           param_distributions=self.param_distributions)
+        _, converted_settings = converter.settings_to_dummies(settings=sampled_params_list,
+                                                           param_options=self.param_distributions)
         scores = self._get_eis_per_second(converted_settings, score_optimum)
         best_index = np.argmax(scores)  # type: int
         best_score = scores[best_index]

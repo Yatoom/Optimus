@@ -31,9 +31,9 @@ class Benchmarker:
         db, table = config.connect()
         self.db_table = table
 
-    def benchmark(self, name, label, seed, starting_points, store_results=True, **optimizer_args):
+    def benchmark(self, name, label, seed, starting_points, max_run_time=1500, store_results=True, **optimizer_args):
         optimizer = ModelOptimizer(estimator=self.estimator, encoded_params=self.params, n_iter=self.n_iter,
-                                   inner_cv=3, max_run_time=1500, **optimizer_args)
+                                   inner_cv=3, max_run_time=max_run_time, **optimizer_args)
 
         optimizer.inner_cv = self.openml_splits
 
@@ -45,26 +45,42 @@ class Benchmarker:
         results = optimizer.cv_results_
 
         # Store results
-        if store_results:
-            for i in range(0, len(results["best_score"])):
-                iteration = {
-                    "task": self.task_id,
-                    "method": label,
-                    "iteration": i,
-                    "score": results["mean_test_score"][i],
-                    "best_score": results["best_score"][i],
-                    "evaluation_time": results["evaluation_time"][i],
-                    "maximize_time": results["maximize_time"][i],
-                    "cumulative_time": results["cumulative_time"][i],
-                    "model": type(self.estimator).__name__,
-                    "params": results["readable_params"][i],
-                    "seed": seed,
-                    "method_name": name,
-                    "time_regressor": optimizer.time_regression,
-                    "score_regressor": optimizer.score_regression,
-                    "local_search": optimizer.local_search,
-                    "classic": optimizer.multi_start
-                }
 
+        for i in range(0, len(results["best_score"])):
+            iteration = {
+                "task": self.task_id,
+                "method": label,
+                "iteration": i,
+                "score": results["mean_test_score"][i],
+                "best_score": results["best_score"][i],
+                "evaluation_time": results["evaluation_time"][i],
+                "maximize_time": results["maximize_time"][i],
+                "cumulative_time": results["cumulative_time"][i],
+                "model": type(self.estimator).__name__,
+                "params": results["readable_params"][i],
+                "seed": seed,
+                "method_name": name,
+                "time_regressor": optimizer.time_regression,
+                "score_regressor": optimizer.score_regression,
+                "local_search": optimizer.local_search,
+                "classic": optimizer.multi_start
+            }
+
+            if store_results:
                 self.db_table.insert(iteration)
         return self
+
+if __name__ == "__main__":
+    job = {
+        "name": "GP EIPS",
+        "label": "GP/LightGBM EIPS",
+        "starting_points": 5,
+        "use_ei_per_second": True,
+        "score_regression": "gp",
+        "time_regression": "lightgbm",
+        "local_search": False,
+        "xi": 0
+    }
+
+    b = Benchmarker(31, 10000)
+    b.benchmark(seed=100, max_run_time=30, store_results=False, **job)

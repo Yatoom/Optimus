@@ -1,6 +1,8 @@
 import copy
 import warnings
+
 import numpy as np
+import pandas as pd
 
 
 def grid_to_json(grid):
@@ -135,6 +137,39 @@ def reconstruct_setting(o):
         converted[key] = reconstruct_value(value)
 
     return converted
+
+
+def to_string(i):
+    return type(i).__name__ if type(i) != str else i
+
+
+def settings_to_dummies(param_options, settings):
+    types = {key: pd.Series(values).dtype for key, values in param_options.items()}
+    result = {}
+    for key, typ in types.items():
+        if typ == object or None in param_options[key]:
+            options = [to_string(i) for i in param_options[key]]
+            names = [f"{key}__{i}" for i in options]
+
+            num_names = len(names)
+            num_positions = len(settings)
+            one_hot = np.zeros(shape=(num_names, num_positions))
+
+            for index, setting in enumerate(settings):
+                position = options.index(to_string(setting[key]))
+                one_hot[position, index] = 1
+
+            converted = {name: one_hot[index] for index, name in enumerate(names)}
+            result.update(converted)
+        elif typ == bool:
+            name = key
+            params = [int(i[key]) for i in settings]
+            result.update({name: params})
+        else:
+            name = key
+            params = [i[key] for i in settings]
+            result.update({name: params})
+    return len(result), np.array(pd.DataFrame(result))
 
 
 def settings_to_indices(settings, param_distributions, robust=False):
