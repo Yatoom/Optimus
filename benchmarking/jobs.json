@@ -1,7 +1,7 @@
 [
   {
-    "name": "SMAC EIPS",
-    "label": "SMAC/LightGBM EIPS",
+    "name": "SMAC EIPS v2",
+    "label": "SMAC/LightGBM EIPS v2",
     "starting_points": 5,
     "use_ei_per_second": true,
     "score_regression": "SMAC-forest",
@@ -9,9 +9,9 @@
     "local_search": false,
     "xi": 0
   },
-    {
-    "name": "GP EIPS",
-    "label": "GP/LightGBM EIPS",
+  {
+    "name": "GP EIPS v2",
+    "label": "GP/LightGBM EIPS v2",
     "starting_points": 5,
     "use_ei_per_second": true,
     "score_regression": "gp",
