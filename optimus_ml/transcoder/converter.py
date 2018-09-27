@@ -1,10 +1,8 @@
 import copy
-import time
 import warnings
 
 import numpy as np
 import pandas as pd
-from attr import dataclass
 
 
 def grid_to_json(grid):
@@ -140,10 +138,12 @@ def reconstruct_setting(o):
 
     return converted
 
+
 class Data:
     def __init__(self, frame: pd.DataFrame, data: np.array):
         self.frame = frame
         self.data = data
+
 
 class Bounds:
     def __init__(self, length: int, params: dict, types: dict, values: np.array, options: dict):
