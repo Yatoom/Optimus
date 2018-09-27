@@ -1,10 +1,20 @@
 [
   {
-    "name": "SMAC EIPS v2",
-    "label": "SMAC/LightGBM EIPS v2",
+    "name": "SMAC EIPS v3",
+    "label": "SMAC/LightGBM EIPS v3",
     "starting_points": 5,
     "use_ei_per_second": true,
     "score_regression": "SMAC-forest",
+    "time_regression": "lightgbm",
+    "local_search": false,
+    "xi": 0
+  },
+    {
+    "name": "GP EIPS v3",
+    "label": "GP/LightGBM EIPS v3",
+    "starting_points": 5,
+    "use_ei_per_second": true,
+    "score_regression": "gp",
     "time_regression": "lightgbm",
     "local_search": false,
     "xi": 0

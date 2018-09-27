@@ -659,6 +659,7 @@ class Optimizer:
     def _fit(self, params, scores, times, remove_timeouts=False):
         params_array = np.array(params).astype(float)
         scores_array = np.array(scores).astype(float)
+        time_array = np.array(times).astype(float)
 
         # Remove timeouts if desired
         if remove_timeouts:
@@ -672,7 +673,7 @@ class Optimizer:
                 self.score_regressor.fit(params_array, scores_array)
 
             if self.use_ei_per_second:
-                self.time_regressor.fit(params_array, scores_array)
+                self.time_regressor.fit(params_array, time_array)
         except:
             print(traceback.format_exc())
 
