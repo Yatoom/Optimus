@@ -140,20 +140,18 @@ def reconstruct_setting(o):
 
     return converted
 
-
-@dataclass
 class Data:
-    frame: pd.DataFrame
-    data: np.array
+    def __init__(self, frame: pd.DataFrame, data: np.array):
+        self.frame = frame
+        self.data = data
 
-
-@dataclass
 class Bounds:
-    length: int
-    params: dict
-    types: dict
-    values: np.array
-    options: dict
+    def __init__(self, length: int, params: dict, types: dict, values: np.array, options: dict):
+        self.options = options
+        self.values = values
+        self.types = types
+        self.params = params
+        self.length = length
 
 
 def to_string(i):
@@ -191,7 +189,6 @@ def get_bounds(param_options):
 
 
 def settings_to_dummies(param_options, settings, bounds: Bounds):
-    start = time.time()
     result = {}
     for key, typ in bounds.types.items():
         if typ == object or None in param_options[key]:
@@ -221,7 +218,6 @@ def settings_to_dummies(param_options, settings, bounds: Bounds):
     data = np.array(frame)
 
     d = Data(data=data, frame=frame)
-    print(time.time() - start)
     return d
 
 
