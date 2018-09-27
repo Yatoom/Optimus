@@ -140,24 +140,62 @@ def reconstruct_setting(o):
 
     return converted
 
+
 @dataclass
 class Data:
     frame: pd.DataFrame
     data: np.array
+
+
+@dataclass
+class Bounds:
     length: int
-    param_bounds: dict
-    bounds: np.array
+    params: dict
+    types: dict
+    values: np.array
+    options: dict
+
 
 def to_string(i):
     return type(i).__name__ if type(i) != str else i
 
-def settings_to_dummies(param_options, settings):
+
+def get_bounds(param_options):
     types = {key: pd.Series(values).dtype for key, values in param_options.items()}
-    result = {}
     param_bounds = {}
+    all_options = {}
     for key, typ in types.items():
         if typ == object or None in param_options[key]:
             options = [to_string(i) for i in param_options[key]]
+            all_options[key] = options
+            names = [f"{key}__{i}" for i in options]
+            param_bounds.update({name: (0, 1) for name in names})
+        elif typ == bool:
+            options = [0, 1]
+            all_options[key] = options
+            name = key
+            param_bounds[name] = (0, 1)
+        else:
+            options = param_options[key]
+            all_options[key] = options
+            name = key
+            param_bounds[name] = (param_options[key][0], param_options[key][-1])
+
+    return Bounds(
+        params=param_bounds,
+        values=np.array(list(param_bounds.values())),
+        length=len(param_bounds),
+        types=types,
+        options=all_options
+    )
+
+
+def settings_to_dummies(param_options, settings, bounds: Bounds):
+    start = time.time()
+    result = {}
+    for key, typ in bounds.types.items():
+        if typ == object or None in param_options[key]:
+            options = bounds.options[key]
             names = [f"{key}__{i}" for i in options]
 
             num_names = len(names)
@@ -169,26 +207,21 @@ def settings_to_dummies(param_options, settings):
                 one_hot[position, index] = 1
 
             converted = {name: one_hot[index] for index, name in enumerate(names)}
-            param_bounds.update({name: (0, 1) for name in names})
             result.update(converted)
         elif typ == bool:
             name = key
             params = [int(i[key]) for i in settings]
             result.update({name: params})
-            param_bounds[name] = (0, 1)
         else:
             name = key
             params = [i[key] for i in settings]
             result.update({name: params})
-            param_bounds[name] = (param_options[key][0], param_options[key][-1])
 
     frame = pd.DataFrame(result)
     data = np.array(frame)
-    length = len(result)
-    bounds = np.array(list(param_bounds.values()))
 
-    d = Data(data=data, length=length, param_bounds=param_bounds, bounds=bounds, frame=frame)
-    assert(len(d.bounds) == length)
+    d = Data(data=data, frame=frame)
+    print(time.time() - start)
     return d
 
 

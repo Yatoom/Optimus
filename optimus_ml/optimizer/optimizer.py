@@ -100,9 +100,7 @@ class Optimizer:
         self.xi = xi
         self.estimator = estimator
         self.param_distributions = param_distributions
-        data = converter.settings_to_dummies(param_distributions, [])
-        self.data_length = data.length
-        self.data_bounds = data.bounds
+        self.bounds = converter.get_bounds(param_distributions)
         self.inner_cv = inner_cv
         self.scoring = scoring
         self.timeout_score = timeout_score
@@ -130,8 +128,8 @@ class Optimizer:
         def get_gaussian_process_regressor():
             cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
             other_kernel = Matern(
-                length_scale=np.ones(self.data_length),
-                length_scale_bounds=[(0.01, 100)] * self.data_length,
+                length_scale=np.ones(self.bounds.length),
+                length_scale_bounds=[(0.01, 100)] * self.bounds.length,
                 nu=2.5)
 
             return GaussianProcessRegressor(
@@ -178,8 +176,8 @@ class Optimizer:
         elif score_regression == "normal forest":
             self.score_regressor = get_norm_forest_regressor()
         elif score_regression == "SMAC-forest":
-            bounds = self.data_bounds
-            types = np.array([0 for _ in range(self.data_length)])
+            bounds = self.bounds.values
+            types = np.array([0 for _ in range(self.bounds.length)])
             self.score_regressor = RandomForestWithInstances(bounds=bounds, types=types)
         else:
             raise ValueError("The value '{}' is not a valid value for 'score_regression'".format(score_regression))
@@ -373,7 +371,7 @@ class Optimizer:
         self.validated_scores.append(score)
         self.validated_params.append(parameters)
         self.converted_params = converter.settings_to_dummies(
-            settings=self.validated_params, param_options=self.param_distributions).data
+            settings=self.validated_params, param_options=self.param_distributions, bounds=self.bounds).data
 
         self.current_best_score = max(score, self.current_best_score)
         self.best_scores.append(self.current_best_score)
@@ -494,7 +492,8 @@ class Optimizer:
         self._fit(self.converted_params, self.validated_scores, self.evaluation_times, remove_timeouts=False)
 
         converted_settings = converter.settings_to_dummies(settings=sampled_params_list,
-                                                           param_options=self.param_distributions).data
+                                                           param_options=self.param_distributions,
+                                                           bounds=self.bounds).data
         scores = self._get_eis_per_second(converted_settings, score_optimum)
         best_index = np.argmax(scores)  # type: int
         best_score = scores[best_index]
