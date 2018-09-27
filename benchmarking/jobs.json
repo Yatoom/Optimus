@@ -8,15 +8,5 @@
     "time_regression": "lightgbm",
     "local_search": false,
     "xi": 0
-  },
-  {
-    "name": "GP EIPS v2",
-    "label": "GP/LightGBM EIPS v2",
-    "starting_points": 5,
-    "use_ei_per_second": true,
-    "score_regression": "gp",
-    "time_regression": "lightgbm",
-    "local_search": false,
-    "xi": 0
   }
 ]
