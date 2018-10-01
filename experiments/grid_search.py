@@ -4,10 +4,12 @@ from lightgbm import LGBMRegressor
 from sklearn.model_selection import GridSearchCV
 
 # Settings
-target = "time"
-file = "time-data.csv"
-out = "time_250_samples.csv"
+target = "score"
+file = "score-data.csv"
+out = "score_250_samples_random_forest.csv"
 task = 12
+use_log = False
+scoring = "neg_mean_squared_error"
 n_samples = 250
 parameters = {
     "num_leaves": [4, 8, 16, 32, 64, 128, 256],
@@ -32,15 +34,20 @@ unique_groups = np.unique(groups)
 # Take samples
 np.random.seed(42)
 indices = np.where(groups == task)[0]
-indices = np.random.choice(indices, n_samples)
+if n_samples is not None:
+    indices = np.random.choice(indices, n_samples)
 X = X[indices]
 Y = Y[indices]
 Y_LOG = Y_LOG[indices]
 
 # Run Grid Search
 estimator = LGBMRegressor(verbose=-1, min_child_samples=1, objective="mse")
-clf = GridSearchCV(estimator=estimator, param_grid=parameters, cv=10, verbose=10, scoring="neg_mean_squared_error")
-clf.fit(X, Y_LOG)
+clf = GridSearchCV(estimator=estimator, param_grid=parameters, cv=10, verbose=10, scoring=scoring)
+
+if use_log:
+    clf.fit(X, Y_LOG)
+else:
+    clf.fit(X, Y)
 
 # Gather results
 frame = pd.DataFrame(clf.cv_results_["params"])
