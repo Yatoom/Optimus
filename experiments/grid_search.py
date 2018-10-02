@@ -1,21 +1,23 @@
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
+from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.model_selection import GridSearchCV
 
 # Settings
 target = "score"
 file = "score-data.csv"
-out = "score_250_samples_random_forest.csv"
-task = 12
+out = "score_250_samples_erf2.csv"
+task = 16
 use_log = False
 scoring = "neg_mean_squared_error"
 n_samples = 250
 parameters = {
-    "num_leaves": [4, 8, 16, 32, 64, 128, 256],
-    "max_depth": [3, 4, 5, 6, 7, 8, 9, 10, -1],
-    "boosting_type": ["gbdt", "dart"],
-    "learning_rate": [0.1, 0.2, 0.3, 0.4, 0.5],
+    "max_leaf_nodes": [4, 16, 64, 128],
+    "max_depth": [3, 5, 10, None],
+    "max_features": ["sqrt", "log2", None],
+    # "boosting_type": ["gbdt", "dart"],
+    # "learning_rate": [0.1, 0.2, 0.3, 0.4, 0.5],
     "n_estimators": [10, 25, 50, 100]
 }
 
@@ -41,7 +43,7 @@ Y = Y[indices]
 Y_LOG = Y_LOG[indices]
 
 # Run Grid Search
-estimator = LGBMRegressor(verbose=-1, min_child_samples=1, objective="mse")
+estimator = ExtraTreesRegressor(criterion="mse")
 clf = GridSearchCV(estimator=estimator, param_grid=parameters, cv=10, verbose=10, scoring=scoring)
 
 if use_log:
