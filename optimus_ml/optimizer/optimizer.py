@@ -151,8 +151,9 @@ class Optimizer:
 
         # Helper function to create Extra Trees Regressor
         def get_extra_trees_regressor():
-            return ExtraTreesRegressor(n_estimators=100, min_samples_leaf=3, min_samples_split=3,
-                                       n_jobs=1, max_depth=20, random_state=random_state)
+            return ExtraTreesRegressor(n_estimators=100, max_leaf_nodes=64,
+                                       max_depth=None, min_samples_leaf=0.003, min_samples_split=0.03,
+                                       random_state=random_state, max_features=None)
 
         def get_adaboost_regressor():
             return AdaBoostRegressor(n_estimators=50, random_state=random_state)
@@ -199,7 +200,9 @@ class Optimizer:
             elif time_regression == "normal forest":
                 self.time_regressor = get_norm_forest_regressor()
             elif time_regression == "lightgbm":
-                self.time_regressor = LGBMRegressor(max_depth=3, objective="rmse", verbose=-1, n_estimators=100, min_child_samples=1)
+                self.time_regressor = LGBMRegressor(
+                    objective="mse", verbose=-1, min_child_samples=1, learning_rate=0.2, num_leaves=4
+                )
             else:
                 raise ValueError("The value '{}' is not a valid value for 'time_regression'".format(time_regression))
 
@@ -614,7 +617,7 @@ class Optimizer:
             #     if value <= 0:
             #         running_times[index] = np.min(self.evaluation_times)
 
-            return eis / np.log(running_times + 1)
+            return eis / running_times
 
         return eis
 
@@ -659,7 +662,8 @@ class Optimizer:
     def _fit(self, params, scores, times, remove_timeouts=False):
         params_array = np.array(params).astype(float)
         scores_array = np.array(scores).astype(float)
-        time_array = np.array(times).astype(float)
+        time_array = np.array(times)
+        time_array = np.log(time_array + 1).astype(float)
 
         # Remove timeouts if desired
         if remove_timeouts:

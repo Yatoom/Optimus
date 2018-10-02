@@ -1,7 +1,7 @@
 [
   {
-    "name": "SMAC EIPS v3",
-    "label": "SMAC/LightGBM EIPS v3",
+    "name": "SMAC/LightGBM v5",
+    "label": "SMAC/LightGBM v5",
     "starting_points": 5,
     "use_ei_per_second": true,
     "score_regression": "SMAC-forest",
@@ -9,12 +9,49 @@
     "local_search": false,
     "xi": 0
   },
-    {
-    "name": "GP EIPS v3",
-    "label": "GP/LightGBM EIPS v3",
+  {
+    "name": "GP/LightGBM v5",
+    "label": "GP/LightGBM v5",
     "starting_points": 5,
     "use_ei_per_second": true,
     "score_regression": "gp",
+    "time_regression": "lightgbm",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "GP v5",
+    "label": "GP v5",
+    "starting_points": 5,
+    "use_ei_per_second": false,
+    "score_regression": "gp",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "SMAC v5",
+    "label": "SMAC v5",
+    "starting_points": 5,
+    "use_ei_per_second": false,
+    "score_regression": "SMAC-forest",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "ERF v5",
+    "label": "ERF v5",
+    "starting_points": 5,
+    "use_ei_per_second": false,
+    "score_regression": "extra forest",
+    "local_search": false,
+    "xi": 0
+  },
+  {
+    "name": "ERF/LightGBM v5",
+    "label": "ERF/LightGBM v5",
+    "starting_points": 5,
+    "use_ei_per_second": true,
+    "score_regression": "extra forest",
     "time_regression": "lightgbm",
     "local_search": false,
     "xi": 0
