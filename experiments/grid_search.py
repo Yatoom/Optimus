@@ -7,22 +7,27 @@ from sklearn.model_selection import GridSearchCV
 # Settings
 target = "score"
 file = "score-data.csv"
-out = "score_250_samples_erf2.csv"
-task = 16
-use_log = False
+out = "score_250_samples_erf3.csv"
+task = 12
+use_log = True
 scoring = "neg_mean_squared_error"
 n_samples = 250
 parameters = {
-    "max_leaf_nodes": [4, 16, 64, 128],
-    "max_depth": [3, 5, 10, None],
-    "max_features": ["sqrt", "log2", None],
-    # "boosting_type": ["gbdt", "dart"],
-    # "learning_rate": [0.1, 0.2, 0.3, 0.4, 0.5],
-    "n_estimators": [10, 25, 50, 100]
+    "num_leaves": [4, 8, 16],
+    "max_depth": [-1],
+    "boosting_type": ["gbdt", "dart"],
+    "learning_rate": [0.05, 0.1, 0.15],
+    "n_estimators": [10, 25, 50, 100],
+    "reg_alpha": [0, 0.10, 0.15, 0.20, 0.25]
 }
 
 # Load data
 frame = pd.read_csv(file, index_col=0)
+
+# Drop duplicates and impute max depth
+frame = frame.drop_duplicates()
+frame["max_depth_None"] = frame["max_depth"] == 'NoneType'
+frame["max_depth"] = frame["max_depth"].replace("NoneType", 20).astype(int)
 
 # Convert data
 frame = pd.get_dummies(frame)
@@ -43,7 +48,7 @@ Y = Y[indices]
 Y_LOG = Y_LOG[indices]
 
 # Run Grid Search
-estimator = ExtraTreesRegressor(criterion="mse")
+estimator = LGBMRegressor(verbose=-1, min_child_samples=1, objective="mse")
 clf = GridSearchCV(estimator=estimator, param_grid=parameters, cv=10, verbose=10, scoring=scoring)
 
 if use_log:
@@ -52,9 +57,9 @@ else:
     clf.fit(X, Y)
 
 # Gather results
-frame = pd.DataFrame(clf.cv_results_["params"])
-frame["fit_time"] = clf.cv_results_["mean_fit_time"]
-frame["target"] = clf.cv_results_["mean_test_score"]
-frame = frame.sort_values("target")
+results = pd.DataFrame(clf.cv_results_["params"])
+results["fit_time"] = clf.cv_results_["mean_fit_time"]
+results["target"] = clf.cv_results_["mean_test_score"]
+results = results.sort_values("target")
 
-frame.to_csv(out)
+results.to_csv(out)
